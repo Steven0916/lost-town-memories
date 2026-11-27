@@ -291,3 +291,15 @@ dialog:not([open]){animation:none}
 .swatch{display:grid;place-items:center;width:2.6rem;height:2.6rem;border-radius:50%;border:2px solid #ffffffaa;box-shadow:0 2px 6px #4b3a1b33,inset 0 -3px 6px #0000001f;font-size:1.5rem}
 .swatch.icon{background:#fff8e4}
 #clothes{max-height:21rem;overflow:auto;padding-right:.2rem}
+
+/* ---- 稀有度光暈 ---- */
+.shop-card{position:relative;overflow:hidden}
+.shop-card.rare{border-color:#7fb0dc;box-shadow:0 0 10px #7fb0dc66}
+.shop-card.legend{border-color:#e0b04a;background:linear-gradient(180deg,#fffbe8,#fbe9b0);box-shadow:0 0 14px #f6b94f88}
+.shop-card.legend::after{content:"";position:absolute;inset:0;pointer-events:none;background:linear-gradient(105deg,transparent 40%,#ffffffaa 50%,transparent 60%);transform:translateX(-120%);animation:shine 3.2s ease-in-out infinite}
+@keyframes shine{0%,55%{transform:translateX(-120%)}100%{transform:translateX(120%)}}
+.rarity-tag{font-size:.66rem;font-weight:900;padding:0 .45rem;border-radius:99px;color:#fff;background:#5b97cf}
+.shop-card.legend .rarity-tag{background:linear-gradient(90deg,#e8a42c,#f6c95a);color:#5a3a08}
+.gear-card.tier2{box-shadow:0 0 10px #7fb0dc66}
+.gear-card.tier3{box-shadow:0 0 14px #f6b94f88}
+@media(prefers-reduced-motion:reduce){.shop-card.legend::after{animation:none}}

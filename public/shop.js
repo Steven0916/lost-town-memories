@@ -28,6 +28,7 @@
     const cards = CATALOG[current].items.map((item) => {
       const slot = current;
       const owned = Fleet.ownsItem(slot, item.id), on = Wardrobe.outfit[slot] === item.id;
+      const rar = rarityOf(item);
       const swatch = item.color
         ? el("span", { className: "swatch", style: "background:#" + item.color })
         : el("span", { className: "swatch icon" }, item.icon);
@@ -47,7 +48,7 @@
         });
         buttons.push(tryBtn, buy);
       }
-      return el("article", { className: "shop-card" + (on ? " on" : "") + (owned ? "" : " locked") }, swatch, el("h5", {}, item.name), ...buttons);
+      return el("article", { className: "shop-card " + rar + (on ? " on" : "") + (owned ? "" : " locked") }, swatch, el("h5", {}, item.name), RARITY_LABEL[rar] ? el("span", { className: "rarity-tag" }, RARITY_LABEL[rar]) : null, ...buttons);
     });
 
     list.replaceChildren(

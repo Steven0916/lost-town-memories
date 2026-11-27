@@ -106,7 +106,7 @@
       box(0,0,0,2.3,.13,1.72,"b99a61");
       box(0,.18,.36,2.12,.73,.60,"aa734a");
       for(const i of [-1,1]) for(const j of [-1,1]) box(i,.12,j*.66,.09,1.86,.09,"624d39");
-      for(let i=0;i<7;i++){
+      for(let i=0;i<10;i++){
         const x=-1.23+i*.35,color=i%2?"fff1c5":tint;
         face([[x,1.87,.88],[x+.35,1.87,.88],[x+.35,2.30,0],[x,2.30,0]],color);
         face([[x,2.30,0],[x+.35,2.30,0],[x+.35,1.87,-.88],[x,1.87,-.88]],color,.84);
@@ -972,6 +972,13 @@
     rasterize(vertices,output,outputDepth,w,h);
     software.putImageData(frameImage,0,0);
   }
+  // 穿著傳說級服飾（價格≥120）或 3 階裝備時，角色周圍會有金色閃光
+  function isLegend(){
+    const o=window.travelOutfit;if(!o)return false;
+    if(o.weapon===3||o.armor===3||o.boots===3)return true;
+    for(const slot in o){const it=window.CATALOG?.[slot]?.items.find(i=>i.id===o[slot]);if(it&&it.price>=120)return true;}
+    return false;
+  }
   function render(state,time,dt){
     clock=time;
     if(!gpu&&!software)return;
@@ -1021,6 +1028,12 @@
         at(c.x,0,c.z,time*2.2,()=>{const y=.8+Math.sin(time*3+c.i)*.12;tube(0,y,-.04,.04,.34,.34,"ffd24a",12);tube(0,y,.04,.06,.22,.22,"ffb92e",12);});
       }
       if(state.dash)for(let i=0;i<6;i++)prism(state.x-Math.sin(state.dir)*(.8+i*.45),.1+i*.06,state.z-Math.cos(state.dir)*(.8+i*.45),.2-i*.025,.02,"e8fbf8",6);
+    }
+    if(scene!=="sea"&&state.mode==="play"&&!stillAir.matches&&isLegend()){
+      for(let i=0;i<10;i++){
+        const a=time*1.3+i*.9,r=.85+.15*Math.sin(time*2+i),y=.2+((time*.5+i*.1)%1)*1.9;
+        at(state.x+Math.cos(a)*r,0,state.z+Math.sin(a)*r,time*2+i,()=>crystal(0,y,0,.085+.035*Math.sin(time*4+i),i%2?"fff0a0":"ffd25a"));
+      }
     }
     if(scene!=="sea"&&state.pet&&state.mode==="play")petModel(window.travelOutfit?.pet,state.pet.x,state.pet.z,state.pet.dir,time);
     if(scene==="sea")seaDynamic(state,time);

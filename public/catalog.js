@@ -1,6 +1,9 @@
 // 服飾商店目錄：每一類有哪些款式、多少金幣。price 為 0 代表一開始就有。
 // 新增款式：在對應類別加一筆，並到 world.js 補上外觀（帽子在 hatModel、上衣細節在 coatDetail、
 // 臉部／頸部／背飾／手持在 accessories、寵物在 petModel）。顏色類（上衣、褲子、鞋子）id 就是色碼。
+// 稀有度：依價格分級（≥120 傳說、≥45 稀有、其餘普通），商店光暈與場景閃光都用它。
+window.rarityOf = (item) => (!item ? "common" : item.price >= 120 ? "legend" : item.price >= 45 ? "rare" : "common");
+window.RARITY_LABEL = { common: "", rare: "稀有", legend: "傳說" };
 window.CATALOG = (() => {
   const color = (id, name, price) => ({ id, name, price, color: id });
   return {
