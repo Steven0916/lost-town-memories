@@ -149,3 +149,28 @@ dialog::backdrop{background:radial-gradient(ellipse at 50% 40%,#17434f99,#07161c
   *,*::before,*::after{animation-duration:.001ms!important;animation-iteration-count:1!important;transition-duration:.001ms!important}
 }
 #cloud-title:focus,#dialog-title:focus{outline:none}
+
+/* ---- 金幣、船塢、3D 開船 ---- */
+.coin-chip{font-weight:900;color:#ffe6a0;letter-spacing:.03em}
+.coin-chip.bump{animation:gem-bump .5s var(--ease)}
+@keyframes gem-bump{40%{transform:scale(1.18)}}
+.coin-gain{margin:10px 0;padding:8px 12px;border-radius:10px;background:linear-gradient(135deg,#fff3c2,#ffe08e);color:#6b4510;font-weight:900;text-align:center;animation:rise .6s var(--ease)}
+.veh-current{margin:8px 0;font-weight:800;color:#1f5547}
+.veh-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin:6px 0 10px}
+.veh-card{display:flex;flex-direction:column;gap:6px;padding:10px;border:2px solid #e0d1a6;border-radius:14px;background:linear-gradient(180deg,#fffdf5,#f6efd8);transition:transform .2s var(--ease),border-color .2s,box-shadow .2s}
+.veh-card:hover{transform:translateY(-3px);box-shadow:0 10px 22px #4b3a1b26}
+.veh-card.on{border-color:#4b8575;box-shadow:0 0 0 3px #4b857533}
+.veh-card canvas{width:100%;height:auto;border-radius:10px;background:linear-gradient(#bfe9ee,#6fc0c9 62%,#3f93a6)}
+.veh-card h3{font-size:18px;font-family:"Noto Serif TC",serif}
+.veh-card p{font-size:13px;line-height:1.5;color:#46594f;margin:0}
+.veh-stats{font:600 12px ui-monospace,Consolas,monospace;color:#7a5a1c!important;letter-spacing:.05em}
+.veh-card button{margin-top:auto;width:100%}
+.veh-tag{margin-top:auto;text-align:center;padding:8px;border-radius:10px;background:#dcecd9;color:#1f5547;font-weight:800;font-size:14px}
+#sail-hud{left:19px;max-width:min(360px,65%);border-left:4px solid #7fd0e0}
+#sail-status{font-size:14px;color:#e0ece7;line-height:1.45;margin:8px 0 0}
+.sail-bar{height:10px;border-radius:6px;background:#ffffff1f;overflow:hidden;margin-top:8px}
+.sail-bar i{display:block;height:100%;width:0;background:linear-gradient(90deg,#7fd0e0,#ffd981);border-radius:6px;transition:width .25s linear}
+#sail-abort{margin-top:10px;font-size:.875rem}
+#app[data-mode="sail"] .world-actions,#app[data-mode="sail"] #interact{display:none}
+#app[data-mode="sail"] #stage::after{background:radial-gradient(ellipse at 50% 45%,transparent 50%,#0a3a5a55 100%)}
+@media(max-width:700px){.veh-grid{grid-template-columns:1fr}.veh-card{display:grid;grid-template-columns:42% 1fr;column-gap:10px}.veh-card canvas{grid-row:1/5}.veh-card button,.veh-tag{grid-column:2}#sail-hud{left:8px;top:8px;max-width:calc(100% - 16px)}}

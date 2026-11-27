@@ -291,6 +291,123 @@
       prism(x,4.57+age*3.8,z,r,r*.94,["837c73","979085","aba396","c0b7aa"][Math.floor(age*4)],8,r*.81);
     }
   }
+
+  // ---- 載具：帆船、戰鬥機、海怪（模型朝 +z 前進）----
+  function tube(x,y,z0,z1,r0,r1,color,sides=8){
+    for(let i=0;i<sides;i++){
+      const a=i*Math.PI*2/sides,b=(i+1)*Math.PI*2/sides;
+      const p=(ang,r,z)=>[x+Math.cos(ang)*r,y+Math.sin(ang)*r,z];
+      face([p(a,r0,z0),p(b,r0,z0),p(b,r1,z1),p(a,r1,z1)],color,.68+.45*(1+Math.sin(a+.8))/2);
+    }
+  }
+  function vehicle(kind,x,z,dir,time=0){
+    if(kind==="jet"){
+      prism(x,-.385,z,1.35,.01,"1f7184",10);
+      at(x,.95+Math.sin(time*2.4)*.1,z,dir,()=>{
+        tube(0,0,-1.7,.9,.38,.31,"b9c4cc");
+        tube(0,0,.9,2.4,.31,.04,"dfe6ea");
+        box(0,.3,.35,.34,.24,.95,"4aa3df");
+        for(const s of [-1,1]){
+          face([[s*.25,.03,.7],[s*2.2,.0,-.95],[s*2.2,.0,-1.5],[s*.25,.03,-1.35]],"8f9ca7");
+          face([[s*.25,-.05,.7],[s*2.2,-.07,-.95],[s*2.2,-.07,-1.5],[s*.25,-.05,-1.35]],"67757f");
+          box(s*2.2,-.1,-1.2,.12,.22,.65,"d9534f");
+          face([[s*.2,.05,-1.3],[s*.95,.05,-1.9],[s*.95,.05,-2.05],[s*.2,.05,-1.75]],"8f9ca7");
+        }
+        box(0,.7,-1.75,.08,.95,.55,"d9534f");
+        box(0,.12,.95,.62,.05,.08,"d9534f");
+        const f=.6+.3*Math.sin(time*38);
+        tube(0,0,-1.7,-1.7-f*1.4,.24,.02,"ffb347",6);
+        tube(0,0,-1.7,-1.7-f*.8,.13,.02,"fff2b0",6);
+      });
+      return;
+    }
+    if(kind==="kraken"){
+      const rise=.1*Math.sin(time*2.1);
+      at(x,-.42,z,dir,()=>{
+        prism(0,0,0,1.3,.5,"68499a",12,1.1);
+        prism(0,.5+rise,0,1.1,.7,"7d5cb0",12,.84);
+        prism(0,1.2+rise,0,.84,.62,"8d6dc3",12,.36);
+        prism(0,1.82+rise,0,.36,.3,"a487d8",8,.05);
+        for(let i=0;i<6;i++){const a=i*1.1+.4;box(Math.cos(a)*.7,1.0+rise,-Math.abs(Math.sin(a))*.7,.17,.1,.17,"c9b0ef");}
+        for(const s of [-1,1]){
+          box(s*.42,.98+rise,.8,.38,.38,.26,"fff3c2");
+          box(s*.42,.98+rise,.94,.17,.22,.1,"2a1b3d");
+          box(s*.42,1.26+rise,.8,.44,.09,.28,"553b7b");
+          prism(s*.3,1.95+rise,-.05,.1,.5,"b99bea",5,.02);
+        }
+        box(0,.58+rise,.95,.62,.16,.1,"2a1b3d");
+        for(let i=-2;i<=2;i++)box(i*.12,.67+rise,1.0,.07,.1,.05,"fff6e0");
+        for(let t=0;t<7;t++){
+          const a=1.0+t*.69, dx=Math.sin(a), dz=Math.cos(a);
+          for(let j=0;j<6;j++){
+            const r=1.0+j*.3, sway=Math.sin(time*2.6-j*.7+t*1.3)*.28*(j/5+.2);
+            const y=.1+Math.max(0,Math.sin(j*.62+t+time*1.8))*.35*(j/5+.3);
+            prism(dx*r-dz*sway,y,dz*r+dx*sway,.22-.028*j,.2,j%2?"7d5cb0":"8d6dc3",6,.17-.026*j);
+          }
+        }
+      });
+      return;
+    }
+    boat(x,z,dir,"fce7a8");
+  }
+  let sea=null;
+  function seaTerrain(){
+    const route=sea.route, start=route[0], goal=route[route.length-1];
+    face([[-420,-.42,-420],[420,-.42,-420],[420,-.42,420],[-420,-.42,420]],"2f93a8");
+    path(route,17,"4cb2c0",-.40);
+    for(let i=1;i<route.length;i++){
+      const [x0,z0]=route[i-1],[x1,z1]=route[i],n=Math.max(1,Math.round(Math.hypot(x1-x0,z1-z0)/3.2));
+      for(let k=0;k<n;k++)box(x0+(x1-x0)*k/n,-.38,z0+(z1-z0)*k/n,.55,.03,.55,"ffe099");
+    }
+    let seed=11;const rnd=()=>(seed=(seed*16807)%2147483647)/2147483647;
+    const nearRoute=(x,z)=>{let best=1e9;for(let i=1;i<route.length;i++){const [ax,az]=route[i-1],[bx,bz]=route[i],vx=bx-ax,vz=bz-az,t=Math.max(0,Math.min(1,((x-ax)*vx+(z-az)*vz)/(vx*vx+vz*vz)));best=Math.min(best,Math.hypot(x-ax-t*vx,z-az-t*vz));}return best;};
+    for(let i=0;i<46;i++){
+      const x=-110+rnd()*250,z=-70+rnd()*140;
+      if(nearRoute(x,z)<14)continue;
+      const r=1+rnd()*2.4;
+      prism(x,-.8,z,r+.5,.7,"e9d19b",9);
+      prism(x,-.15,z,r,.35,i%3?"7fa57b":"6e7a80",9,r*.7);
+      if(i%3===1)tree(x,z,.8+rnd()*.5,"4b9c6d");
+    }
+    for(const [cx,cz,flag] of [[start[0],start[1],false],[goal[0],goal[1],true]]){
+      prism(cx,-.95,cz,12,.9,"e9d19b",14);
+      prism(cx,-.2,cz,10,.4,"89aa76",14,9);
+      for(let i=0;i<5;i++){const a=i*1.25+(flag?.6:0);tree(cx+Math.cos(a)*6.2,cz+Math.sin(a)*6.2,1+.2*(i%3),"4b9c6d");}
+      house(cx+Math.cos(2.2)*3,cz+Math.sin(2.2)*3-1,0,3.2,2.6,flag?"ebcaa0":"d6c28e",flag?"5d8094":"b5594f",1.7);
+      lamp(cx+3.6,cz+3.4);
+      box(cx+8.4*(flag?-1:1),-.12,cz,3.2,.2,1.1,"ac784e");
+      if(flag){
+        box(cx+2,.2,cz-4.5,.14,4.2,.14,"624d39");
+        face([[cx+2.07,3.9,cz-4.5],[cx+4.2,3.4,cz-4.5],[cx+2.07,2.9,cz-4.5]],"e6574f");
+      }
+    }
+  }
+  function seaDynamic(state,time){
+    const d=state.dir,sx=Math.sin(d),sz=Math.cos(d),kind=state.vehicle||"sail";
+    if((state.speed||0)>.8&&kind!=="jet")for(let i=0;i<7;i++){
+      const back=1.2+i*.85,spread=.35+i*.1;
+      prism(state.x-sx*back,-.395,state.z-sz*back,spread,.012,i%2?"e4f5f4":"bfe7e6",8);
+    }
+    if(kind==="jet"&&(state.speed||0)>.8)for(let i=0;i<5;i++){
+      const back=3+i*1.1;
+      prism(state.x-sx*back,-.395,state.z-sz*back,.5+i*.18,.012,"dff3f2",8);
+    }
+    if(!(state.boom>.15)){
+      vehicle(kind,state.x,state.z,d,time);
+      if(kind==="sail")person(state.x-sx*.15,state.z-sz*.15,d,"556ea2","333f65",0,true,.12);
+    }
+    for(const p of state.pirates||[])boat(p.x,p.z,p.dir,"2b2b35");
+    if(state.ball)prism(state.ball.x,state.ball.y,state.ball.z,.28,.28,"22232c",8);
+    if(state.boom>0)at(state.x,0,state.z,time*4,()=>crystal(0,.7,0,.35+state.boom*1.1,state.boom<.5?"ffb347":"ff7a45"));
+    const g=sea.route[sea.route.length-1];
+    at(g[0],0,g[1],time*.9,()=>crystal(0,3.2+Math.sin(time*2.6)*.2,0,.5,"ffd871"));
+  }
+  function configureSea(info){sea=info;configure("sea",[]);}
+  function vehiclePreview(canvas,kind,angle,time=0){
+    const saved=vertices;vertices=[];
+    vehicle(kind,0,0,angle,time);
+    paintModel(canvas,saved,canvas.width*.5,canvas.height*(kind==="jet"?.74:.7),kind==="jet"?34:kind==="kraken"?44:54);
+  }
   function setPieces(name){
     switch(name){
       case "market":
@@ -406,9 +523,9 @@
   function configure(name,landmarks){
     scene=name;points=landmarks;land=layouts[name]?.shape??harborLand;
     const stage=document.querySelector("#stage");
-    stage.style.background=layouts[name]?"radial-gradient(ellipse at 56% 22%, #eef0c7, #"+layouts[name].sky+" 42%, #366873)":"";
+    stage.style.background=name==="sea"?"linear-gradient(#bfe9ee,#4fa9b8)":layouts[name]?"radial-gradient(ellipse at 56% 22%, #eef0c7, #"+layouts[name].sky+" 42%, #366873)":"";
     blockers.length=0;vertices=[];
-    if(name==="harbor")terrain();else unitTerrain();
+    if(name==="harbor")terrain();else if(name==="sea")seaTerrain();else unitTerrain();
     if(gpu){
       gpu.count=vertices.length/6;
       gl.bindBuffer(gl.ARRAY_BUFFER,gpu.staticBuffer);
@@ -534,8 +651,9 @@
     if(canvas.width!==w||canvas.height!==h){canvas.width=w;canvas.height=h;}
     const home=state.mode==="home", mobile=width<680;
     const overview=home||state.mode==="repair"||state.mode==="end";
-    const zoom=home?Math.max(40,45*height/width):overview?(mobile?50:41):mobile?29:24;
-    const tx=overview?0:state.x*.78,tz=overview?1:state.z*.72;
+    const seaMode=scene==="sea"&&!overview;
+    const zoom=seaMode?(mobile?36:30):home?Math.max(40,45*height/width):overview?(mobile?50:41):mobile?29:24;
+    const tx=seaMode?state.x:overview?0:state.x*.78,tz=seaMode?state.z:overview?1:state.z*.72;
     const follow=1-Math.exp(-8*dt);
     cx+=(tx-cx)*follow;cz+=(tz-cz)*follow;
     eye=[cx-front[0]*zoom,1-front[1]*zoom,cz-front[2]*zoom];
@@ -559,13 +677,14 @@
         at(p.x,0,p.z,time*.9,()=>crystal(0,2.10+Math.sin(time*3)*.14,0,lit?.25:.15,lit?"fff4ac":"ffd871"));
       }
     }
-    at(0,0,7.95,time*.45,()=>crystal(0,.98+Math.sin(time*2.6)*.11,0,state.repair>0?.36+state.repair*.12:.32,state.repair>0?"ffe996":"8fbfbb"));
-    if(!stillAir.matches)for(let i=0;i<18;i++){
+    if(scene!=="sea")at(0,0,7.95,time*.45,()=>crystal(0,.98+Math.sin(time*2.6)*.11,0,state.repair>0?.36+state.repair*.12:.32,state.repair>0?"ffe996":"8fbfbb"));
+    if(scene!=="sea"&&!stillAir.matches)for(let i=0;i<18;i++){
       const a=time*.16*(1+i%3*.35)+i*2.39,r=3+(i*1.73)%10;
       const fx=Math.cos(a)*r*1.15,fz=Math.sin(a)*r*.8+1,fy=.8+Math.sin(time*1.4+i*1.7)*.45+(i%4)*.38;
       at(fx,0,fz,time*.8+i,()=>crystal(0,fy,0,.05+.02*Math.sin(time*3+i),i%3?"fff0a8":"bff3e4"));
     }
-    if(!home)person(state.x,state.z,state.dir,"556ea2","333f65",state.phase,true);
+    if(scene==="sea")seaDynamic(state,time);
+    else if(!home)person(state.x,state.z,state.dir,"556ea2","333f65",state.phase,true);
     if(gpu){
       gl.bindBuffer(gl.ARRAY_BUFFER,gpu.dynamicBuffer);
       gl.bufferData(gl.ARRAY_BUFFER,new Float32Array(vertices),gl.DYNAMIC_DRAW);
@@ -580,7 +699,7 @@
     person(0,0,dir,"556ea2","333f65",0,true);
     paintModel(canvas,saved,120,210,98);
   }
-  function ferry(canvas,progress,aboard,tint){
+  function ferry(canvas,progress,aboard,tint,kind="sail"){
     const saved=vertices;
     vertices=[];
     const distance=progress*15, origin=-2-distance, destination=15-distance;
@@ -598,8 +717,9 @@
         box(hx,.1,z+.385,.2,.42,.03,"80553c");
       }
     }
-    boat(0,0,1.30,"fce7a8");
-    person(aboard?.68:-1.4,aboard?.18:.25,.42,"556ea2","333f65",0,true,aboard?.10:.15);
+    const special=aboard&&kind!=="sail";
+    if(special)vehicle(kind,0,0,1.3,0);else boat(0,0,1.30,"fce7a8");
+    if(!special)person(aboard?.68:-1.4,aboard?.18:.25,.42,"556ea2","333f65",0,true,aboard?.10:.15);
     paintModel(canvas,saved,canvas.width*.44,canvas.height*.68,55);
   }
   function paintModel(canvas,saved,cx,cy,scale){
@@ -621,5 +741,5 @@
       ctx.beginPath();ctx.moveTo(...pts[0]);ctx.lineTo(...pts[1]);ctx.lineTo(...pts[2]);ctx.closePath();ctx.fill();
     }
   }
-  window.World={ferry,preview,render,project,walkable,spawn,configure,available:Boolean(gpu||software)};
+  window.World={ferry,preview,configureSea,vehiclePreview,render,project,walkable,spawn,configure,available:Boolean(gpu||software)};
 })();

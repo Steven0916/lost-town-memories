@@ -3,6 +3,7 @@
 (() => {
   const PROGRESS_KEY = "lost-town-memories-progress-v1";
   const OUTFIT_KEY = "town-travel-outfit";
+  const WALLET_KEY = "lost-town-memories-wallet-v1";
   const CLOUD_KEY = "lost-town-memories-cloud-v1";
   const ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
   const $ = (s) => document.querySelector(s);
@@ -45,7 +46,7 @@
     try {
       const result = await post("save", {
         code: cloud.code, name: cloud.name,
-        progress: read(PROGRESS_KEY, {}), outfit: read(OUTFIT_KEY, {}),
+        progress: read(PROGRESS_KEY, {}), outfit: read(OUTFIT_KEY, {}), wallet: read(WALLET_KEY, null),
       });
       lastSync = result.updated; setStatus("已同步 " + new Date(lastSync).toLocaleTimeString("zh-TW", { hour: "2-digit", minute: "2-digit" }));
     } catch (error) { dirty = true; setStatus("離線中，稍後自動同步"); }
@@ -119,6 +120,7 @@
         if (!confirm("找到「" + (data.name || "旅人") + "」的進度，要用它取代這台裝置的進度嗎？")) { restoreMsg.textContent = "已取消。"; return; }
         write(PROGRESS_KEY, data.progress ?? {});
         if (data.outfit && Object.keys(data.outfit).length) write(OUTFIT_KEY, data.outfit);
+        if (data.wallet) write(WALLET_KEY, data.wallet);
         cloud.code = data.code; cloud.name = data.name || cloud.name; persist();
         restoreMsg.textContent = "還原完成，重新載入中…";
         setTimeout(() => location.reload(), 600);

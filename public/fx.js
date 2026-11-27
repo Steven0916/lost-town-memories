@@ -83,3 +83,10 @@
     if (name === "win") setTimeout(confetti, 120);
   });
 })();
+
+window.addEventListener("ltm:wallet", (event) => {
+  const chip = document.querySelector("#coins");
+  if (!chip || event.detail.coins === window.__lastCoins) { window.__lastCoins = event.detail.coins; return; }
+  window.__lastCoins = event.detail.coins;
+  chip.classList.remove("bump"); void chip.offsetWidth; chip.classList.add("bump");
+});

@@ -25,6 +25,7 @@
 <script defer src="units.js"></script>
 <script defer src="world.js"></script>
 <script defer src="wardrobe.js"></script>
+<script defer src="fleet.js"></script>
 <script defer src="game.js"></script>
 <script defer src="fx.js"></script>
 <script defer src="cloud.js"></script>
@@ -36,6 +37,7 @@
     <div class="head-meta"><span class="status-dot"></span><span id="source-tag"></span></div>
     <button id="switch" class="quiet" type="button" hidden>選單元</button>
     <button id="dress" class="quiet" type="button">角色換裝</button>
+    <button id="coins" class="quiet coin-chip" type="button" aria-label="金幣與載具船塢">🪙 <span id="coin-count">0</span></button>
     <button id="cloud-btn" class="quiet" type="button">☁<span class="lbl"> 我的紀錄</span></button>
     <button id="sound" class="quiet" type="button" aria-pressed="true" aria-label="開關音效"><span class="ico">🔊</span><span class="lbl"> 音效</span></button>
     <button id="help" class="quiet" type="button">操作說明</button>
@@ -83,6 +85,12 @@
       <p class="eyebrow" id="mission-no"></p><h2 id="mission-title"></h2><p id="mission-hint"></p>
       <div class="destination"><span aria-hidden="true">◆</span><button id="destination" type="button"></button></div>
       <button id="route-help" class="quiet" type="button" aria-pressed="false">找路提示</button>
+    </section>
+    <section id="sail-hud" class="hud" hidden aria-live="polite">
+      <p class="eyebrow" id="sail-vehicle"></p><h2 id="sail-title"></h2>
+      <div class="sail-bar" aria-hidden="true"><i id="sail-fill"></i></div>
+      <p id="sail-status"></p>
+      <button id="sail-abort" class="quiet" type="button">回碼頭</button>
     </section>
     <div id="progress" class="hud" hidden><span>記憶碎片</span><div class="gems" aria-hidden="true"><i></i><i></i><i></i></div><strong id="count" aria-live="polite"></strong></div>
     <div id="controls" hidden>

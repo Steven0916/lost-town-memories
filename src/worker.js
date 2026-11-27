@@ -49,6 +49,20 @@ function sanitizeProgress(input) {
   return out;
 }
 
+const VEHICLE_IDS = ["sail", "jet", "kraken"];
+function sanitizeWallet(w) {
+  if (!w || typeof w !== "object") return null;
+  const owned = [...new Set(["sail", ...(Array.isArray(w.owned) ? w.owned : [])])].filter((id) => VEHICLE_IDS.includes(id));
+  const earned = {};
+  if (w.earned && typeof w.earned === "object") {
+    for (const [id, e] of Object.entries(w.earned).slice(0, 30)) {
+      if (!UNIT_RE.test(id) && id !== "sample") continue;
+      earned[id] = { g: [0, 1, 2].map((i) => e?.g?.[i] === true), f: e?.f === true };
+    }
+  }
+  return { coins: Math.max(0, Math.min(99999, Number(w.coins) | 0)), owned, selected: owned.includes(w.selected) ? w.selected : "sail", earned };
+}
+
 async function handleApi(request, env, url) {
   const kv = env.DATA;
   if (!kv) throw new HttpError(503, "尚未綁定資料庫");
@@ -65,6 +79,7 @@ async function handleApi(request, env, url) {
       progress: sanitizeProgress(body.progress),
       outfit: typeof body.outfit === "object" && body.outfit ? Object.fromEntries(
         Object.entries(body.outfit).slice(0, 8).map(([k, v]) => [clean(k, 10), clean(v, 12)])) : {},
+      wallet: sanitizeWallet(body.wallet),
       updated: Date.now(),
     };
     await kv.put("save:" + code, JSON.stringify(record), { expirationTtl: YEAR });

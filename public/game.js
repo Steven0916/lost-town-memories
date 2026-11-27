@@ -3,6 +3,9 @@
   const units=window.UNITS;
   let lesson=sample, course=null, semester="六上", cornerUnlocked=false;
   const world = window.World;
+  const Fleet = window.Fleet;
+  let finishBonus = 0;
+  const coinLine = (n, label = "") => n ? '<p class="coin-gain">🪙 +' + n + " 金幣" + (label ? "（" + label + "）" : "") + "</p>" : "";
   const $ = selector => document.querySelector(selector);
   const set = (selector, value) => { $(selector).textContent = value; };
   const dialog = $("#dialog"), body = $("#dialog-body");
@@ -115,7 +118,7 @@
     world.configure(course?.scene??"harbor",lesson.landmarks);
     createPins();
     close();reset(resume?getProgress(id).checkpoint:null);
-    playStart=Date.now();
+    playStart=Date.now();finishBonus=0;
     saveProgress();
     if(stage===3) crystalPanel();
     else if(resume) notice("已回到上次的任務。");
@@ -176,8 +179,9 @@
     state.mode=name;$("#app").dataset.mode=name;
     $("#home").hidden=name!=="home";
     $("#mission").hidden=name!=="play";
-    $("#progress").hidden=name==="home";
-    $("#controls").hidden=name!=="play";
+    $("#progress").hidden=name==="home"||name==="sail";
+    $("#controls").hidden=name!=="play"&&name!=="sail";
+    $("#sail-hud").hidden=name!=="sail";
     $("#switch").hidden=name!=="play";
     $("#home-link").disabled=name==="home";
     if(name!=="play")$("#interact").hidden=true;
@@ -417,7 +421,8 @@
       node.hidden=false;node.focus();return;
     }
     records.push(task.clue);cornerUnlocked=false;stage+=1;route=[];saveProgress();updateHUD();fx("gem");
-    open("找回第 "+stage+" 枚碎片",lesson.chapter,para(task.plans?task.plans[stanceIndex][1]:task.hint)+
+    const gain=Fleet.gem(currentId(),stage-1);
+    open("找回第 "+stage+" 枚碎片",lesson.chapter,para(task.plans?task.plans[stanceIndex][1]:task.hint)+coinLine(gain)+
       actions(action(stage===3?"修復記憶水晶":"繼續冒險",stage===3?"repair":"close")),{closable:false});
   }
 
@@ -514,7 +519,7 @@
     if(number===0)records=[lesson.map.record];
     if(number===1)records.push(...Object.values(lesson.npc).map(npc=>npc.record));
     stage+=1;route=[];saveProgress();updateHUD();
-    open("找回第 "+stage+" 枚碎片","記憶碎片 "+stage+" / 3",para(task.success)+
+    open("找回第 "+stage+" 枚碎片","記憶碎片 "+stage+" / 3",para(task.success)+coinLine(Fleet.gem(currentId(),stage-1))+
       actions(action(stage===3?"修復記憶水晶":"繼續冒險",stage===3?"repair":"close")),{closable:false});
   });
 
@@ -531,6 +536,7 @@
     $("#repair").hidden=false;
   }
   function finish(){
+    finishBonus=Fleet.finish(currentId());
     saveProgress(true);
     showFinish();
   }
@@ -538,7 +544,7 @@
     fx("win");
     mode("end");$("#repair").hidden=true;
     open("城鎮記憶回來了！","三枚碎片已集齊",
-      actions(action("前往碼頭搭船","dock"),action("回首頁","home","quiet"))+
+      coinLine(finishBonus,"通關獎勵")+actions(action("前往碼頭搭船","dock"),action("回首頁","home","quiet"))+
       '<h3>你用過的三條線索</h3><ol>'+records.map(record=>'<li>'+esc(record)+'</li>').join("")+'</ol>'+
       '<h3>全班一起討論</h3><p class="discuss">'+esc(lesson.discussion)+'</p>'+
       (course?'<p class="source-note">課程對照及史實參考 · <a href="'+esc(course.source)+'" target="_blank" rel="noopener">查看來源</a></p>':"")+
@@ -551,64 +557,115 @@
     const options=ports.map(u=>'<option value="'+esc(u.id)+'">'+esc(u.volume+'第'+u.number+'單元 · '+u.unit)+'</option>').join("");
     open(aboard?"選擇目的島嶼":"村落碼頭",lesson.chapter,
       '<canvas class="ferry-scene" width="640" height="245" aria-label="村落渡船"></canvas>'+
-      (message?para(message):"")+(aboard?'<label>目的單元 <select id="port-choice">'+options+'</select></label>':"")+
-      actions(aboard?action("開始掌舵","sail"):action("登船","board"),action("回首頁","home","quiet")),{closable:false});
-    world.ferry(body.querySelector("canvas"),0,aboard,"699b80");
+      (message?para(message):"")+(aboard?'<p class="veh-current">目前載具：'+Fleet.current().icon+" "+esc(Fleet.current().name)+'</p><label>目的單元 <select id="port-choice">'+options+'</select></label>':"")+
+      actions(aboard?action("開始掌舵","sail"):action("登船","board"),...(aboard?[action("船塢・更換載具","garage","quiet")]:[]),action("回首頁","home","quiet")),{closable:false});
+    world.ferry(body.querySelector("canvas"),0,aboard,"699b80",Fleet.current().id);
+  }
+  let sailRun=null;
+  function routeInfo(route,x,z){
+    let best={dist:1e9,along:0},acc=0;
+    for(let i=1;i<route.length;i++){
+      const [ax,az]=route[i-1],[bx,bz]=route[i],vx=bx-ax,vz=bz-az,len=Math.hypot(vx,vz);
+      const t=Math.max(0,Math.min(1,((x-ax)*vx+(z-az)*vz)/(len*len)));
+      const dist=Math.hypot(x-ax-t*vx,z-az-t*vz);
+      if(dist<best.dist)best={dist,along:acc+t*len};
+      acc+=len;
+    }
+    return best;
+  }
+  function leaveSea(){
+    sailRun=null;Object.assign(state,{vehicle:null,pirates:[],ball:null,boom:0,speed:0});
+    world.configure(course?.scene??"harbor",lesson.landmarks);
+    mode("end");
   }
   function sail(next){
     if(!next)return;
-    open("掌舵前往"+next.chapter,lesson.chapter,
-      para("點選海面讓船朝該處航行，或按方向鍵操船。沿著金色虛線駛入終點旗。")+
-      '<canvas class="sea-chart" tabindex="0" width="640" height="300" aria-label="操船海圖，使用方向鍵航行"></canvas><p role="status" class="sea-status">已離港，請沿航線航行。</p>',{closable:false});
-    const map=body.querySelector(".sea-chart"),ctx=map.getContext("2d"),status=body.querySelector(".sea-status");
-    const bend=units.indexOf(next)%2===0?1:-1;
-    const points=[[52,150],[190,150+65*bend],[330,150-58*bend],[465,150-25*bend],[588,150]];
-    let x=52,y=150,goal=null,last=performance.now(),danger=0,hit=0,heading=0;
-    const keys=new Set(),directions={ArrowLeft:[-1,0],ArrowRight:[1,0],ArrowUp:[0,-1],ArrowDown:[0,1]};
-    map.focus();
-    map.onkeydown=e=>{if(directions[e.key]){e.preventDefault();e.stopPropagation();keys.add(e.key);goal=null;}};
-    map.onkeyup=e=>keys.delete(e.key);
-    map.onblur=()=>keys.clear();
-    map.onpointerdown=e=>{
-      const r=map.getBoundingClientRect();
-      goal=[(e.clientX-r.left)*640/r.width,(e.clientY-r.top)*300/r.height];map.focus();
+    const v=Fleet.current(), bend=units.indexOf(next)%2===0?1:-1;
+    const route=[[-60,0],[-32,32*bend],[4,-26*bend],[40,-12*bend],[72,0]];
+    let total=0;for(let i=1;i<route.length;i++)total+=Math.hypot(route[i][0]-route[i-1][0],route[i][1]-route[i-1][1]);
+    close();keys.clear();touch.clear();
+    world.configureSea({route});
+    Object.assign(state,{x:-51,z:0,dir:Math.PI/2,phase:0,vehicle:v.id,speed:0,pirates:[],ball:null,boom:0});
+    sailRun={next,v,route,total,danger:0,hit:false,hitT:0,progress:0,status:""};
+    mode("sail");
+    set("#sail-vehicle",v.icon+" "+v.name);set("#sail-title","前往"+next.chapter);
+    set("#sail-status","用方向鍵或 WASD 駕駛，沿著金色虛線前進。");
+    $("#sail-fill").style.width="0%";
+    $("#stage").focus({preventScroll:true});
+  }
+  function sailStep(dt){
+    const r=sailRun;if(!r)return;
+    dt=Math.min(dt,.05);
+    if(r.hit){
+      r.hitT+=dt;
+      const p=state.pirates[0];
+      if(r.hitT<.65&&p){const t=r.hitT/.65;state.ball={x:p.x+(state.x-p.x)*t,y:.9+Math.sin(t*Math.PI)*2.2,z:p.z+(state.z-p.z)*t};}
+      else{state.ball=null;state.boom=Math.min(1,(r.hitT-.65)/.9);}
+      state.speed*=.92;
+      if(r.hitT>2.1){leaveSea();ferryScreen("dock","你已在原本的島嶼重生，可以重新登船。");}
+      return;
+    }
+    const held=[...touch.values()],pressed=name=>Number(keys.has(name)||held.includes(name));
+    const dx=pressed("right")-pressed("left"),dz=pressed("down")-pressed("up");
+    const vx=.966*dx+.259*dz,vz=-.259*dx+.966*dz,input=dx||dz;
+    if(input){
+      const diff=Math.atan2(Math.sin(Math.atan2(vx,vz)-state.dir),Math.cos(Math.atan2(vx,vz)-state.dir));
+      state.dir+=Math.sign(diff)*Math.min(Math.abs(diff),6*dt);
+    }
+    state.speed+=((input?r.v.speed:0)-state.speed)*(1-Math.exp(-2.5*dt));
+    state.x+=Math.sin(state.dir)*state.speed*dt;state.z+=Math.cos(state.dir)*state.speed*dt;
+    const info=routeInfo(r.route,state.x,state.z);
+    r.progress=Math.max(r.progress,info.along/r.total);
+    const fill=Math.round(Math.min(1,r.progress)*100)+"%";
+    if($("#sail-fill").style.width!==fill)$("#sail-fill").style.width=fill;
+    const goal=r.route[r.route.length-1];
+    if(Math.hypot(state.x-goal[0],state.z-goal[1])<11){
+      const next=r.next;leaveSea();fx("win");landAtPort(next);return;
+    }
+    let label="沿著金色虛線前進，朝終點旗靠港。";
+    if(info.dist>8.5){
+      if(r.v.immune)label="海盜看到海怪，嚇得不敢開砲！";
+      else{
+        if(!state.pirates.length){
+          state.pirates=[{x:state.x-Math.sin(state.dir)*6+Math.cos(state.dir)*14,z:state.z-Math.cos(state.dir)*6-Math.sin(state.dir)*14,dir:0}];
+        }
+        r.danger+=dt;label="偏離航線！快回到金色虛線旁。";
+        if(r.danger>=r.v.tolerance){r.hit=true;r.hitT=0;label="海盜砲擊！即將在出發島的碼頭重生。";}
+      }
+    }else{
+      r.danger=Math.max(0,r.danger-dt*2.5);
+      if(!r.danger&&state.pirates.length)state.pirates=[];
+    }
+    for(const p of state.pirates){
+      const ex=state.x-p.x,ez=state.z-p.z,d=Math.hypot(ex,ez);
+      p.dir=Math.atan2(ex,ez);
+      if(d>9){const sp=Math.max(4,state.speed*1.2);p.x+=ex/d*sp*dt;p.z+=ez/d*sp*dt;}
+    }
+    if(label!==r.status){r.status=label;set("#sail-status",label);}
+  }
+  let garageFrom="",garageAnim=0;
+  function garage(from){
+    if(from!==undefined)garageFrom=from;
+    const w=Fleet.get(), bar=n=>"■".repeat(n)+"□".repeat(5-n);
+    const cards=Fleet.vehicles.map(v=>{
+      const owned=Fleet.owns(v.id),selected=w.selected===v.id;
+      const button=selected?'<span class="veh-tag">使用中 ✓</span>':owned?action("選用","veh-use-"+v.id,"quiet-light"):
+        action("🪙 "+v.price+" 購買","veh-buy-"+v.id,Fleet.canAfford(v.id)?"primary":"quiet");
+      return '<article class="veh-card'+(selected?" on":"")+'"><canvas width="200" height="130" data-veh="'+v.id+'" aria-label="'+esc(v.name)+'模型"></canvas>'+
+        '<h3>'+v.icon+" "+esc(v.name)+'</h3><p>'+esc(v.perk)+'</p><p class="veh-stats">速度 '+bar(v.stats[0])+'<br>安全 '+bar(v.stats[1])+'</p>'+button+'</article>';
+    }).join("");
+    open("船塢","🪙 你有 "+w.coins+" 金幣",'<div class="veh-grid">'+cards+'</div>'+
+      '<p class="dialog-text small">每枚記憶碎片 +'+Fleet.reward.gem+"、每關通關 +"+Fleet.reward.finish+"（每關各只領一次）。</p>"+
+      '<p id="veh-msg" class="cloud-msg" role="status"></p>'+
+      actions(garageFrom==="board"?action("返回登船","board"):action("關閉","close")));
+    const canvases=[...body.querySelectorAll("canvas[data-veh]")];
+    cancelAnimationFrame(garageAnim);
+    const loop=t=>{
+      if(!canvases[0]?.isConnected)return;
+      for(const c of canvases)world.vehiclePreview(c,c.dataset.veh,.6+Math.sin(t/1800)*.5,t/1000);
+      garageAnim=requestAnimationFrame(loop);
     };
-    function routeDistance(){
-      return Math.min(...points.slice(1).map(([bx,by],i)=>{
-        const [ax,ay]=points[i],vx=bx-ax,vy=by-ay;
-        const t=Math.max(0,Math.min(1,((x-ax)*vx+(y-ay)*vy)/(vx*vx+vy*vy)));
-        return Math.hypot(x-ax-t*vx,y-ay-t*vy);
-      }));
-    }
-    function frame(now){
-      if(!map.isConnected)return;
-      const dt=Math.min(.05,(now-last)/1000);last=now;
-      if(!hit){
-        let dx=0,dy=0;
-        for(const key of keys){dx+=directions[key][0];dy+=directions[key][1];}
-        if(goal){dx=goal[0]-x;dy=goal[1]-y;}
-        const d=Math.hypot(dx,dy),step=goal?Math.min(d,dt*95):dt*95;
-        if(d>.1){heading=Math.atan2(dy,dx);x=Math.max(8,Math.min(632,x+dx/d*step));y=Math.max(8,Math.min(292,y+dy/d*step));}
-        danger=routeDistance()>31?danger+dt:0;
-        if(danger>=1.8)hit=now;
-        else if(Math.hypot(x-588,y-150)<17){landAtPort(next);return;}
-      }
-      const label=hit?"海盜砲擊！即將在出發島的碼頭重生。":danger?"偏離航線！快回到金色虛線旁。":"沿著金色虛線前進，朝終點旗靠港。";
-      if(status.textContent!==label)status.textContent=label;
-      const sea=ctx.createLinearGradient(0,0,0,300);sea.addColorStop(0,"#12546b");sea.addColorStop(1,"#238789");
-      ctx.fillStyle=sea;ctx.fillRect(0,0,640,300);
-      ctx.beginPath();points.forEach(([px,py],i)=>i?ctx.lineTo(px,py):ctx.moveTo(px,py));
-      ctx.lineCap="round";ctx.lineJoin="round";ctx.lineWidth=62;ctx.strokeStyle="#59aaa7";ctx.stroke();
-      ctx.lineWidth=3;ctx.strokeStyle="#ffe099";ctx.setLineDash([8,10]);ctx.stroke();ctx.setLineDash([]);
-      ctx.font="30px sans-serif";ctx.textAlign="center";ctx.fillText("🏝️",48,154);ctx.fillText("🏁",588,150);
-      ctx.save();ctx.translate(x,y);ctx.rotate(heading);ctx.fillStyle="#71432d";ctx.beginPath();ctx.moveTo(17,0);ctx.quadraticCurveTo(1,-14,-14,-7);ctx.lineTo(-14,7);ctx.quadraticCurveTo(1,14,17,0);ctx.fill();ctx.fillStyle="#fff0ca";ctx.beginPath();ctx.moveTo(8,0);ctx.lineTo(-6,-8);ctx.lineTo(-4,6);ctx.fill();ctx.restore();
-      if(danger){const py=y<150?268:38;ctx.fillText("🏴‍☠️",320,py);
-        if(hit){const t=Math.min(1,(now-hit)/650);ctx.beginPath();ctx.arc(320+(x-320)*t,py+(y-py)*t,5,0,Math.PI*2);ctx.fillStyle="#252733";ctx.fill();if(t===1)ctx.fillText("💥",x,y);}
-      }
-      if(hit&&now-hit>1550){ferryScreen("dock","你已在原本的島嶼重生，可以重新登船。");return;}
-      requestAnimationFrame(frame);
-    }
-    requestAnimationFrame(frame);
+    garageAnim=requestAnimationFrame(loop);
   }
   function landAtPort(next){
     semester=next.volume;
@@ -628,6 +685,13 @@
   }
   body.addEventListener("click",event=>{
     const command=event.target.closest("[data-action]")?.dataset.action;
+    if(command==="garage")garage("board");
+    if(command?.startsWith("veh-use-")){Fleet.select(command.slice(8));fx("tap");garage();}
+    if(command?.startsWith("veh-buy-")){
+      const id=command.slice(8),v=Fleet.vehicles.find(item=>item.id===id);
+      if(Fleet.buy(id)){fx("gem");garage();}
+      else set("#veh-msg","還差 "+(v.price-Fleet.get().coins)+" 金幣，再通關幾關就買得起了！");
+    }
     if(command==="close")close();
     if(command!==undefined&&command!==null&&command!=="close")fx("tap");
     if(command==="picker")picker();
@@ -679,6 +743,7 @@
   $("#stage").tabIndex=-1;
   function returnHome(){
     close();
+    sailRun=null;Object.assign(state,{vehicle:null,pirates:[],ball:null,boom:0,speed:0});
     course=null;lesson=sample;state.active=[];state.repair=0;
     keys.clear();touch.clear();route=[];nearby=null;clearGuide();
     const url=new URL(location.href);
@@ -704,6 +769,8 @@
     $("#start-upper").focus({preventScroll:true});
   });
   $("#home-link").addEventListener("click",returnHome);
+  $("#coins").addEventListener("click",()=>garage(""));
+  $("#sail-abort").addEventListener("click",()=>{leaveSea();ferryScreen("dock");});
   $("#switch").addEventListener("click",picker);
   $("#interact").addEventListener("click",interact);
   $("#return").addEventListener("click",()=>{Object.assign(state,world.spawn,{dir:Math.PI});route=[];clearGuide();updateNearby();notice("已回到起始廣場。你的線索還在。");});
@@ -723,7 +790,7 @@
     para("點「找路提示」會顯示一條路徑。答錯時，可以依出現的提示回看線索。關卡進度會保存在這個瀏覽器。")+
     (!lesson.fictional&&lesson.source?para(lesson.source):"")+actions(action("關閉說明","close"))));
   window.addEventListener("keydown",event=>{
-    if(state.mode!=="play"||dialog.open||$("#wardrobe").open||event.ctrlKey||event.metaKey||event.altKey)return;
+    if((state.mode!=="play"&&state.mode!=="sail")||dialog.open||$("#wardrobe").open||event.ctrlKey||event.metaKey||event.altKey)return;
     const key=event.key.toLowerCase();
     if(key in movement){event.preventDefault();keys.add(movement[key]);}
     if(key==="e"&&!event.repeat){event.preventDefault();interact();}
@@ -822,6 +889,7 @@
     const dt=Math.min(1,(time-(previousTime||time))/1000);
     previousTime=time;
     if(state.mode==="play"&&!dialog.open&&!$("#wardrobe").open)move(dt);
+    if(state.mode==="sail"&&!dialog.open&&!$("#wardrobe").open)sailStep(dt);
     if(state.mode==="repair"){
       state.repair=Math.min(3,(time-repairStart)/1000);
       if(state.repair>=3)finish();
