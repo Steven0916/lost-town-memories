@@ -198,7 +198,10 @@
     const skin=player?(look.skin||"efbf92"):npcSkins[seed%4], hair=player?(look.hair||"503b35"):npcHair[(seed>>2)%5];
     const cs=player&&costumePalette[look.costume]?look.costume:null, pal=cs?costumePalette[cs]:null;
     coat=pal?pal.coat:(look.coat || coat);
-    const pants=pal?pal.pants:(look.pants || "45494f"), shoes=pal?pal.shoes:(look.shoes || "5f4738");
+    const pants=pal?pal.pants:(look.pants || "45494f");
+    let shoes=pal?pal.shoes:(look.shoes || "5f4738");
+    const wp=player?(look.weapon|0):0, ar=player?(look.armor|0):0, bt=player&&!cs?(look.boots|0):0;
+    if(bt)shoes=["","6b4a2f","e8e2c8","8fd0ff"][bt];
     const skinDark=shadeHex(skin,.9), hasHat=cs?true:(!player||look.hat!=="bare");
     const idle=phase?0:Math.sin(clock*2.2+x*.7+z*.9)*.012;
     const blink=((clock+seed*.37+x*.5)%3.6)<.13;
@@ -213,6 +216,7 @@
         box(s*.15,.02,.043+off,.22,.12,.31,shoes);
         box(s*.15,.02,.17+off,.2,.07,.07,shadeHex(shoes,1.25));
         box(s*.15,0,.043+off,.23,.03,.32,"2a2220");
+        if(bt){box(s*.15,.1,off,.235,.13,.26,shadeHex(shoes,.92));if(bt>=3)box(s*.28,.08,off-.02,.04,.2,.22,"ffffff");}
       }
       // 軀幹：下擺、主體、腰帶、領口、鈕扣
       box(0,.4,0,.63,.1,.47,shadeHex(coat,.82));
@@ -221,6 +225,20 @@
       box(0,.53,.228,.10,.055,.025,"c9a563");
       box(0,.98,.08,.36,.06,.3,"f4ecd2");
       for(const y of [.64,.76,.88])box(0,y,.222,.045,.045,.015,"e9d9a8");
+      if(ar){
+        const col=["","8a5a34","aab4be","3aa57f"][ar];
+        box(0,.46,.222,.5,.4,.03,col);
+        for(const s of [-1,1])box(s*.4,.82,0,.2,.12,.28,col);
+        if(ar>=2)box(0,.58,.24,.3,.04,.01,ar>=3?"ffd981":"dfe5ea");
+        if(ar>=3)for(const s of [-1,1])prism(s*.4,.94,0,.05,.16,"ffd981",4,.01);
+      }
+      if(wp){
+        const hz=sway*.6,blade=["","b98a52","cfd5da","9be7ff"][wp];
+        box(.52,.5,hz+.06,.05,.78,.04,blade);
+        box(.52,.46,hz+.06,.2,.04,.07,"c9a563");
+        box(.52,.36,hz+.06,.05,.12,.05,"6b4a2f");
+        if(wp>=3)crystal(.52,1.36,hz+.06,.08,"bff3ff");
+      }
       if(!cs&&player&&look.gear==="pack"){
         face([[-.27,1.0,.219],[-.15,1.0,.219],[.3,.56,.219],[.18,.56,.219]],"7a5a3c");
         box(.24,.58,.222,.075,.075,.015,"c9a563");
@@ -860,24 +878,46 @@
     if(!special)person(aboard?.68:-1.4,aboard?.18:.25,.42,"556ea2","333f65",0,true,aboard?.10:.15);
     paintModel(canvas,saved,canvas.width*.44,canvas.height*.68,55);
   }
+  const paintCache={w:0,h:0,buf:null,z:null,tmp:null};
   function paintModel(canvas,saved,cx,cy,scale){
-    const ctx=canvas.getContext("2d"), triangles=[];
-    for(let i=0;i<vertices.length;i+=18){
-      const pts=[], color=vertices.slice(i+3,i+6).map(n=>Math.round(n*255));
-      let depth=0;
-      for(let j=i;j<i+18;j+=6){
-        const [x,y,z]=vertices.slice(j,j+3);
-        pts.push([cx+x*scale,cy-y*scale+z*scale*.265]);
-        depth+=z+y*.265;
+    const tri=vertices;vertices=saved;
+    const SS=canvas.width<=320?3:2,w=canvas.width*SS,h=canvas.height*SS;
+    if(paintCache.w!==w||paintCache.h!==h){
+      paintCache.w=w;paintCache.h=h;paintCache.buf=new Uint32Array(w*h);paintCache.z=new Float32Array(w*h);
+      paintCache.tmp=document.createElement("canvas");paintCache.tmp.width=w;paintCache.tmp.height=h;
+    }
+    const {buf,z:zbuf,tmp}=paintCache;
+    buf.fill(0);zbuf.fill(-1e9);
+    for(let i=0;i+17<tri.length;i+=18){
+      const X=[],Y=[],Z=[];
+      for(let j=0;j<3;j++){
+        const o=i+j*6,x=tri[o],y=tri[o+1],zz=tri[o+2];
+        X.push((cx+x*scale)*SS);Y.push((cy-y*scale+zz*scale*.265)*SS);Z.push(zz+y*.265);
       }
-      triangles.push({pts,color,depth});
+      const det=(Y[1]-Y[2])*(X[0]-X[2])+(X[2]-X[1])*(Y[0]-Y[2]);
+      if(Math.abs(det)<1e-6)continue;
+      const r=Math.round(tri[i+3]*255),g=Math.round(tri[i+4]*255),bl=Math.round(tri[i+5]*255);
+      const color=littleEndian?((255<<24)|(bl<<16)|(g<<8)|r)>>>0:((r<<24)|(g<<16)|(bl<<8)|255)>>>0;
+      const minX=Math.max(0,Math.floor(Math.min(X[0],X[1],X[2]))),maxX=Math.min(w-1,Math.ceil(Math.max(X[0],X[1],X[2])));
+      const minY=Math.max(0,Math.floor(Math.min(Y[0],Y[1],Y[2]))),maxY=Math.min(h-1,Math.ceil(Math.max(Y[0],Y[1],Y[2])));
+      for(let y=minY;y<=maxY;y++){
+        const py=y+.5;
+        for(let x=minX;x<=maxX;x++){
+          const px=x+.5;
+          const l0=((Y[1]-Y[2])*(px-X[2])+(X[2]-X[1])*(py-Y[2]))/det;
+          const l1=((Y[2]-Y[0])*(px-X[2])+(X[0]-X[2])*(py-Y[2]))/det;
+          const l2=1-l0-l1;
+          if(l0<-1e-4||l1<-1e-4||l2<-1e-4)continue;
+          const depth=l0*Z[0]+l1*Z[1]+l2*Z[2],index=y*w+x;
+          if(depth>=zbuf[index]-1e-7){zbuf[index]=depth;buf[index]=color;}
+        }
+      }
     }
-    vertices=saved;
+    tmp.getContext("2d").putImageData(new ImageData(new Uint8ClampedArray(buf.buffer.slice(0)),w,h),0,0);
+    const ctx=canvas.getContext("2d");
     ctx.clearRect(0,0,canvas.width,canvas.height);
-    for(const {pts,color} of triangles.sort((a,b)=>a.depth-b.depth)){
-      ctx.fillStyle="rgb("+color.join(",")+")";
-      ctx.beginPath();ctx.moveTo(...pts[0]);ctx.lineTo(...pts[1]);ctx.lineTo(...pts[2]);ctx.closePath();ctx.fill();
-    }
+    ctx.imageSmoothingEnabled=true;ctx.imageSmoothingQuality="high";
+    ctx.drawImage(tmp,0,0,canvas.width,canvas.height);
   }
   window.World={ferry,preview,configureSea,vehiclePreview,render,project,walkable,spawn,configure,available:Boolean(gpu||software)};
 })();

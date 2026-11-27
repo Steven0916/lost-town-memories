@@ -37,6 +37,7 @@
   const notes = { c5: 523.25, e5: 659.25, g5: 783.99, c6: 1046.5, a4: 440, f4: 349.23, d5: 587.33 };
   const sounds = {
     tap: () => tone(notes.g5, 0, .09, "triangle", .04),
+    hit: () => { tone(110, 0, .28, "sawtooth", .08); tone(70, .05, .3, "square", .05); },
     coin: () => { tone(1318, 0, .08, "square", .025); tone(1760, .07, .2, "triangle", .05); },
     skill: () => { for (let i = 0; i < 5; i++) tone(300 + i * 150, i * .04, .16, "sawtooth", .02); },
     gem: () => [notes.c5, notes.e5, notes.g5, notes.c6].forEach((f, i) => tone(f, i * .09, .25, "triangle", .07)),

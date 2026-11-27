@@ -6,6 +6,7 @@
   const Fleet = window.Fleet;
   let finishLines = "";
   let starLeft = 2, retryUsed = false, dashUntil = 0, dashReady = 0;
+  let stam = 100, winded = false, sprintHeld = false, touchSprint = false, idleFor = 0;
   const coinLine = (n, label = "") => n ? '<p class="coin-gain">🪙 +' + n + " 金幣" + (label ? "（" + label + "）" : "") + "</p>" : "";
   const $ = selector => document.querySelector(selector);
   const set = (selector, value) => { $(selector).textContent = value; };
@@ -96,6 +97,35 @@
     }
     skip.addEventListener("click",end);
     skip.focus();
+  }
+  // ---- 體力與衝刺 ----
+  function sprintFactor(dt,moving,boost=1.6){
+    const max=Fleet.stats().sta;
+    stam=Math.min(stam,max);
+    if((sprintHeld||touchSprint)&&moving&&!winded&&stam>0){
+      stam=Math.max(0,stam-30*dt);idleFor=0;
+      if(stam===0)winded=true;
+      return boost;
+    }
+    idleFor+=dt;
+    if(idleFor>.5)stam=Math.min(max,stam+14*dt);
+    if(winded&&stam>=Math.min(25,max*.3))winded=false;
+    return 1;
+  }
+  const barCache={};
+  function setWidth(selector,percent){
+    if(barCache[selector]===percent)return;
+    barCache[selector]=percent;$(selector).style.width=percent+"%";
+  }
+  function paintBars(){
+    const percent=Math.round(Math.max(0,Math.min(1,stam/Fleet.stats().sta))*100);
+    setWidth("#sta-fill",percent);setWidth("#sail-sta",percent);
+    $("#sta-fill").parentElement.classList.toggle("low",winded);
+    if(sailRun){
+      setWidth("#hp-fill",Math.round(sailRun.hp/sailRun.maxHp*100));
+      const text=sailRun.hp+" / "+sailRun.maxHp;
+      if(barCache.hpText!==text){barCache.hpText=text;set("#hp-text",text);}
+    }
   }
   function makeSceneCoins(id){
     let seed=0;for(const ch of id)seed=(seed*31+ch.charCodeAt(0))>>>0;seed=seed||7;
@@ -664,16 +694,108 @@
     close();keys.clear();touch.clear();
     world.configureSea({route});
     Object.assign(state,{x:-51,z:0,dir:Math.PI/2,phase:0,vehicle:v.id,speed:0,pirates:[],ball:null,boom:0,dash:false,seaCoins:makeSeaCoins(route,total,next.id),shield:Fleet.skillId()==="shield"});
-    sailRun={next,v,route,total,danger:0,hit:false,hitT:0,progress:0,status:""};
+    const maxHp=Fleet.stats().hp;
+    stam=Fleet.stats().sta;winded=false;
+    sailRun={next,v,route,total,danger:0,hit:false,hitT:0,progress:0,status:"",hp:maxHp,maxHp,
+      quiz:window.Quiz.forUnit(course),originName:course?.unit??"港灣市集",ambushed:[false,false],alarm:0,grace:0,battle:null};
     mode("sail");
     set("#sail-vehicle",v.icon+" "+v.name);set("#sail-title","前往"+next.chapter);
-    set("#sail-status","用方向鍵或 WASD 駕駛，沿著金色虛線前進。"+(state.shield?" 🛡️ 守護光盾已啟動。":"")+" 路上有金幣和寶箱！");
+    set("#sail-status","方向鍵或 WASD 駕駛，按住 Shift 衝刺。路上有金幣、寶箱，也可能遇到海盜！"+(state.shield?" 🛡️ 守護光盾已啟動。":""));
     $("#sail-fill").style.width="0%";
     $("#stage").focus({preventScroll:true});
+  }
+  // ---- 海盜戰鬥：回答剛通關單元的題目 ----
+  function startBattle(){
+    const r=sailRun;
+    if(!r||r.battle)return;
+    r.alarm=0;
+    if(!r.quiz.length){r.grace=8;state.pirates=[];return;}
+    r.battle={pirate:Fleet.pirate.hp,max:Fleet.pirate.hp,free:Fleet.skillId()==="retry",used:new Set(),q:null,answered:false,eliminated:new Set()};
+    keys.clear();touch.clear();sprintHeld=false;touchSprint=false;state.speed=0;
+    if(!state.pirates.length)state.pirates=[{x:state.x+Math.sin(state.dir)*12+Math.cos(state.dir)*6,z:state.z+Math.cos(state.dir)*12-Math.sin(state.dir)*6,dir:0}];
+    fx("hit");
+    nextQuestion();
+  }
+  function nextQuestion(){
+    const b=sailRun.battle,pool=sailRun.quiz;
+    let free=pool.map((_,i)=>i).filter(i=>!b.used.has(i));
+    if(!free.length){b.used.clear();free=pool.map((_,i)=>i);}
+    const pick=free[Math.floor(Math.random()*free.length)];
+    b.used.add(pick);b.q=pool[pick];b.answered=false;b.eliminated=new Set();
+    renderBattle();
+  }
+  function battleBars(){
+    const r=sailRun,b=r.battle;
+    return '<div class="battle-bars"><div class="bar-row"><span>🏴‍☠️ 海盜</span><div class="hpbar enemy"><i style="width:'+Math.round(b.pirate/b.max*100)+'%"></i></div><b>'+b.pirate+' / '+b.max+'</b></div>'+
+      '<div class="bar-row"><span>❤️ 你</span><div class="hpbar"><i style="width:'+Math.round(r.hp/r.maxHp*100)+'%"></i></div><b>'+r.hp+' / '+r.maxHp+'</b></div></div>';
+  }
+  function renderBattle(resultHtml=""){
+    const r=sailRun,b=r.battle,q=b.q;
+    const star=Fleet.skillId()==="star"?action("✦ 星象提示（剩 "+starLeft+" 次）","battle-star","quiet"):"";
+    const view=resultHtml||(
+      '<details class="battle-clue"><summary>📜 回看線索</summary><p class="dialog-text">'+esc(q.clue||"想想這個單元學到的內容。")+'</p></details>'+
+      '<p class="battle-q">'+esc(q.q)+'</p>'+
+      '<div class="battle-options">'+q.options.map((option,i)=>'<button type="button" class="battle-opt" data-action="ans-'+i+'"'+(b.eliminated.has(i)?" disabled":"")+">"+esc(option)+"</button>").join("")+"</div>"+
+      '<div class="dialog-actions">'+star+"</div>");
+    open("海盜來襲！","答對就攻擊（攻擊力 "+Fleet.stats().atk+"）· 回答「"+r.originName+"」",battleBars()+view,{closable:false});
+  }
+  function answerBattle(index){
+    const r=sailRun,b=r&&r.battle;
+    if(!b||b.answered)return;
+    b.answered=true;
+    const q=b.q,ok=index===q.answer;
+    const correct='<p class="dialog-text">正確答案：<strong>'+esc(q.options[q.answer])+"</strong></p>"+(q.explain?'<p class="dialog-text small">'+esc(q.explain)+"</p>":"");
+    if(ok){
+      const damage=Fleet.stats().atk;
+      b.pirate=Math.max(0,b.pirate-damage);
+      const coins=Fleet.addCoins(Fleet.reward.battleHit);
+      fx("gem");
+      if(b.pirate<=0){battleVictory(damage,correct);return;}
+      renderBattle('<p class="battle-result ok">✅ 答對了！你揮出一擊，造成 '+damage+" 點傷害！ 🪙 +"+coins+"</p>"+correct+actions(action("繼續戰鬥","battle-next")));
+      return;
+    }
+    let damage=Math.round(Fleet.pirate.damage*r.v.guard),note="";
+    if(state.shield){state.shield=false;damage=0;note="🛡️ 守護光盾擋下了這次砲擊！";fx("skill");}
+    else if(b.free){b.free=false;damage=0;note="🎓 再試一次：這次不會受傷。";fx("skill");}
+    else fx("hit");
+    r.hp=Math.max(0,r.hp-damage);
+    if(r.hp<=0){
+      renderBattle('<p class="battle-result bad">💫 你的生命值歸零，被海盜擊倒了！</p>'+correct+'<p class="dialog-text">別氣餒，回碼頭整備後再出發。</p>'+actions(action("回碼頭整備","battle-retreat")));
+      return;
+    }
+    renderBattle('<p class="battle-result bad">❌ 答錯了…海盜開砲！'+(damage?"你受到 "+damage+" 點傷害。":"")+(note?"<br>"+note:"")+"</p>"+correct+actions(action("繼續戰鬥","battle-next")));
+  }
+  function battleVictory(damage,correct){
+    const r=sailRun;
+    Fleet.recordWin();
+    const coins=Fleet.addCoins(Fleet.reward.battleWin);
+    const loot=Fleet.rollLoot();
+    r.hp=Math.min(r.maxHp,r.hp+Math.round(r.maxHp*.2));
+    fx("win");
+    let html='<p class="coin-gain">🪙 +'+coins+" 金幣（擊敗獎勵）</p>";
+    if(loot){
+      const g=loot.item,slot=Fleet.gear.slots[g.slot];
+      if(loot.duplicate)html+='<p class="loot">'+g.icon+" 撿到「"+esc(g.name)+"」，但你已經有了，換成 🪙 +"+Fleet.addCoins(15)+"</p>";
+      else html+='<p class="loot">'+g.icon+" 獲得裝備「"+esc(g.name)+"」！（"+Fleet.gear.tiers[g.tier]+"・"+slot.label+" +"+g.value+"）"+
+        (Fleet.get().gear.equipped[g.slot]===g.id?"已自動穿上。":"已放進背包，可到「角色換裝」穿上。")+"</p>";
+    }
+    renderBattle('<p class="battle-result ok">✅ 答對了！造成 '+damage+" 點傷害，海盜被擊敗了！</p>"+correct+html+'<p class="dialog-text small">休息一下，生命值恢復了一些。</p>'+actions(action("繼續航行","battle-end")));
+  }
+  function endBattle(){
+    close();
+    const r=sailRun;
+    if(!r)return;
+    r.battle=null;r.danger=0;r.grace=8;state.pirates=[];
+    notice("繼續航行！前方海面暫時平靜。");
   }
   function sailStep(dt){
     const r=sailRun;if(!r)return;
     dt=Math.min(dt,.05);
+    if(r.battle){
+      for(const p of state.pirates){p.dir=Math.atan2(state.x-p.x,state.z-p.z);}
+      state.speed=0;
+      return;
+    }
     if(r.hit){
       r.hitT+=dt;
       const p=state.pirates[0];
@@ -690,7 +812,8 @@
       const diff=Math.atan2(Math.sin(Math.atan2(vx,vz)-state.dir),Math.cos(Math.atan2(vx,vz)-state.dir));
       state.dir+=Math.sign(diff)*Math.min(Math.abs(diff),6*dt);
     }
-    state.speed+=((input?r.v.speed:0)-state.speed)*(1-Math.exp(-2.5*dt));
+    const sprint=sprintFactor(dt,Boolean(input),1.5);
+    state.speed+=((input?r.v.speed*sprint:0)-state.speed)*(1-Math.exp(-2.5*dt));
     state.x+=Math.sin(state.dir)*state.speed*dt;state.z+=Math.cos(state.dir)*state.speed*dt;
     const info=routeInfo(r.route,state.x,state.z);
     r.progress=Math.max(r.progress,info.along/r.total);
@@ -714,21 +837,25 @@
       const next=r.next;leaveSea();fx("win");landAtPort(next);return;
     }
     let label="沿著金色虛線前進，朝終點旗靠港。";
-    if(info.dist>8.5){
-      if(r.v.immune)label="海盜看到海怪，嚇得不敢開砲！";
+    [.3,.68].forEach((mark,i)=>{
+      if(r.ambushed[i]||r.progress<mark)return;
+      r.ambushed[i]=true;
+      const ahead=posOnRoute(r.route,r.total*Math.min(.97,mark+.08));
+      state.pirates=[{x:ahead.x+ahead.nx*5,z:ahead.z+ahead.nz*5,dir:0}];
+      r.alarm=1.4;notice("🏴‍☠️ 前方有巡邏海盜！準備迎戰！");fx("hit");
+    });
+    if(r.alarm>0){r.alarm-=dt;label="海盜逼近中！";if(r.alarm<=0)startBattle();}
+    if(r.grace>0)r.grace-=dt;
+    if(info.dist>8.5&&r.grace<=0&&!r.alarm){
+      if(r.v.immune)label="海怪游過，海盜不敢靠近！";
       else{
         if(!state.pirates.length){
           state.pirates=[{x:state.x-Math.sin(state.dir)*6+Math.cos(state.dir)*14,z:state.z-Math.cos(state.dir)*6-Math.sin(state.dir)*14,dir:0}];
         }
-        r.danger+=dt;label="偏離航線！快回到金色虛線旁。";
-        if(r.danger>=r.v.tolerance*(skill==="captain"?2:1)){
-          if(state.shield){
-            state.shield=false;r.danger=0;state.pirates=[];label="守護光盾擋下了一次砲擊！";
-            fx("skill");notice("🛡️ 守護光盾擋下了砲擊！");
-          }else{r.hit=true;r.hitT=0;label="海盜砲擊！即將在出發島的碼頭重生。";}
-        }
+        r.danger+=dt;label="偏離航線！海盜正在靠近，快回到金色虛線旁。";
+        if(r.danger>=r.v.tolerance*(skill==="captain"?2:1))startBattle();
       }
-    }else{
+    }else if(!r.alarm){
       r.danger=Math.max(0,r.danger-dt*2.5);
       if(!r.danger&&state.pirates.length)state.pirates=[];
     }
@@ -798,6 +925,19 @@
         button.textContent="✦ 星象提示（剩 "+starLeft+" 次）";fx("skill");
       }
       node.hidden=false;
+    }
+    if(command?.startsWith("ans-"))answerBattle(Number(command.slice(4)));
+    if(command==="battle-next"&&sailRun?.battle)nextQuestion();
+    if(command==="battle-end")endBattle();
+    if(command==="battle-retreat"){leaveSea();ferryScreen("dock","你被海盜打倒了，回到碼頭整備。生命值已恢復，可以再次登船。");}
+    if(command==="battle-star"){
+      const b=sailRun?.battle;
+      if(b&&!b.answered){
+        const wrong=b.q.options.map((_,i)=>i).filter(i=>i!==b.q.answer&&!b.eliminated.has(i));
+        if(starLeft<=0)notice("星象之力已經用完了。");
+        else if(wrong.length<=1)notice("沒有可以再排除的選項了。");
+        else{b.eliminated.add(wrong[Math.floor(Math.random()*wrong.length)]);starLeft--;fx("skill");renderBattle();}
+      }
     }
     if(command==="close")close();
     if(command!==undefined&&command!==null&&command!=="close")fx("tap");
@@ -878,6 +1018,9 @@
   $("#home-link").addEventListener("click",returnHome);
   $("#coins").addEventListener("click",()=>garage(""));
   $("#skill-btn").addEventListener("click",useSkill);
+  const sprintButton=$("#sprint-btn");
+  sprintButton.addEventListener("pointerdown",event=>{event.preventDefault();sprintButton.setPointerCapture(event.pointerId);touchSprint=true;});
+  for(const name of ["pointerup","pointercancel","lostpointercapture"])sprintButton.addEventListener(name,()=>{touchSprint=false;});
   $("#sail-abort").addEventListener("click",()=>{leaveSea();ferryScreen("dock");});
   $("#switch").addEventListener("click",picker);
   $("#interact").addEventListener("click",interact);
@@ -896,17 +1039,19 @@
     para("電腦用 WASD 或方向鍵移動，靠近居民或物件時按 E，也可以點「互動」按鈕。")+
     para("平板可按住左下方的方向按鈕移動。也可以點金色地標讓角色走過去，或點「回到廣場」回到起點。")+
     para("點「找路提示」會顯示一條路徑。答錯時，可以依出現的提示回看線索。關卡進度會保存在這個瀏覽器。")+
+    para("按住 Shift（或畫面上的「衝刺」鈕）可以衝刺，會消耗體力。開船時偏離航線或遇到巡邏海盜，要回答剛通關單元的問題來反擊；答對攻擊、答錯被砲擊扣血，生命值歸零才會回碼頭。擊敗海盜可以得到金幣和裝備。")+
     para("每關藏著 3 枚閃光金幣，走過去就能撿；每天登入、一次過、海上寶箱也能賺金幣。到「角色換裝」買專屬服裝，每套都有獨特技能。")+
     (!lesson.fictional&&lesson.source?para(lesson.source):"")+actions(action("關閉說明","close"))));
   window.addEventListener("keydown",event=>{
     if((state.mode!=="play"&&state.mode!=="sail")||dialog.open||$("#wardrobe").open||event.ctrlKey||event.metaKey||event.altKey)return;
-    if(event.key==="Shift"&&!event.repeat)useSkill();
+    if(event.key==="Shift")sprintHeld=true;
+    if(event.key.toLowerCase()==="q"&&!event.repeat)useSkill();
     const key=event.key.toLowerCase();
     if(key in movement){event.preventDefault();keys.add(movement[key]);}
     if(key==="e"&&!event.repeat){event.preventDefault();interact();}
   });
-  window.addEventListener("keyup",event=>keys.delete(movement[event.key.toLowerCase()]));
-  window.addEventListener("blur",()=>{keys.clear();touch.clear();});
+  window.addEventListener("keyup",event=>{keys.delete(movement[event.key.toLowerCase()]);if(event.key==="Shift")sprintHeld=false;});
+  window.addEventListener("blur",()=>{keys.clear();touch.clear();sprintHeld=false;touchSprint=false;});
   for(const button of document.querySelectorAll("[data-move]")){
     button.addEventListener("pointerdown",event=>{
       event.preventDefault();button.setPointerCapture(event.pointerId);touch.set(event.pointerId,button.dataset.move);
@@ -968,8 +1113,10 @@
     const pressed=name=>Number(keys.has(name)||held.includes(name));
     const dx=pressed("right")-pressed("left"), dz=pressed("down")-pressed("up");
     const vx=.966*dx+.259*dz,vz=-.259*dx+.966*dz;
-    const speed=5.3*(performance.now()<dashUntil?1.9:1);state.dash=speed>5.3;
     if(dx||dz)route=[];
+    const sprint=sprintFactor(dt,Boolean(dx||dz||route.length));
+    const dashing=performance.now()<dashUntil;
+    const speed=5.3*(dashing?1.9:1)*sprint;state.dash=dashing||sprint>1;
     if(route.length){
       let remaining=speed*dt;
       while(route.length&&remaining>0){
@@ -1010,9 +1157,10 @@
     skillButton.hidden=!dashing||state.mode!=="play";
     if(dashing&&!skillButton.hidden){
       const wait=Math.ceil((dashReady-time)/1000);
-      const label=time<dashUntil?"🌪️ 衝刺中！":wait>0?"疾風步 "+wait+" 秒":"🌪️ 疾風步 · Shift";
+      const label=time<dashUntil?"🌪️ 衝刺中！":wait>0?"疾風步 "+wait+" 秒":"🌪️ 疾風步 · Q";
       if(skillButton.textContent!==label){skillButton.textContent=label;skillButton.disabled=wait>0&&time>=dashUntil;}
     }
+    paintBars();
     world.render(state,time/1000,dt);
     if(guideTarget&&Math.hypot(guideTarget.x-state.x,guideTarget.z-state.z)<2.15)clearGuide();
     for(const {position,dot} of guideDots){

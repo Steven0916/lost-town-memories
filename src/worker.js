@@ -50,6 +50,7 @@ function sanitizeProgress(input) {
 }
 
 const VEHICLE_IDS = ["sail", "jet", "kraken"];
+const GEAR_IDS = { sword1: "weapon", sword2: "weapon", sword3: "weapon", armor1: "armor", armor2: "armor", armor3: "armor", boots1: "boots", boots2: "boots", boots3: "boots" };
 const COSTUME_IDS = ["base", "wind", "star", "pirate", "gold", "scholar", "knight"];
 function sanitizeWallet(w) {
   if (!w || typeof w !== "object") return null;
@@ -64,7 +65,14 @@ function sanitizeWallet(w) {
   }
   const cOwned = [...new Set(["base", ...(Array.isArray(w.costumes?.owned) ? w.costumes.owned : [])])].filter((id) => COSTUME_IDS.includes(id));
   const last = /^\d{4}-\d{2}-\d{2}$/.test(w.daily?.last ?? "") ? w.daily.last : "";
+  const gOwned = [...new Set(Array.isArray(w.gear?.owned) ? w.gear.owned : [])].filter((id) => id in GEAR_IDS);
+  const equipped = {};
+  for (const slot of ["weapon", "armor", "boots"]) {
+    const id = w.gear?.equipped?.[slot];
+    equipped[slot] = gOwned.includes(id) && GEAR_IDS[id] === slot ? id : "";
+  }
   return {
+    gear: { owned: gOwned, equipped }, wins: Math.max(0, Math.min(99999, Number(w.wins) | 0)),
     coins: Math.max(0, Math.min(99999, Number(w.coins) | 0)), owned, selected: owned.includes(w.selected) ? w.selected : "sail", earned,
     costumes: { owned: cOwned, equipped: cOwned.includes(w.costumes?.equipped) ? w.costumes.equipped : "base" },
     daily: { last, streak: last ? Math.max(0, Math.min(999, Number(w.daily.streak) | 0)) : 0 },
