@@ -30,7 +30,7 @@ body{background:var(--teal-900);-webkit-font-smoothing:antialiased;text-renderin
 
 /* ---- 遊戲舞台 ---- */
 #app:not([data-mode="home"]) #stage::after{content:"";position:absolute;inset:0;pointer-events:none;z-index:0;
-  background:radial-gradient(ellipse at 50% 45%,transparent 58%,#0a2a3a42 100%)}
+  background:linear-gradient(180deg,color-mix(in srgb,var(--sky-top,#cdeef0) 38%,transparent),transparent 24%),radial-gradient(ellipse at 50% 45%,transparent 56%,var(--vig,#0a2a3a42) 100%);transition:background .6s}
 .hud{background:linear-gradient(160deg,#143a43ee,#0e2a32ee);backdrop-filter:blur(10px) saturate(1.2);-webkit-backdrop-filter:blur(10px) saturate(1.2);border-color:#a9b99a70;box-shadow:var(--shadow-soft),inset 0 1px 0 #ffffff14;animation:hud-in .5s var(--ease) both}
 @keyframes hud-in{from{opacity:0;transform:translateY(-10px)}}
 #mission{border-left:4px solid var(--gold)}

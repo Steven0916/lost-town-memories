@@ -830,9 +830,28 @@
       prism(x*.77+.5,.027,z*.79-.32,.24,.15,"e9d19b",5,.15);
     }
   }
+  // 每個單元一組時段氣氛：光色、遠景霧色、天空頂色、暗角色
+  const hexRgb=h=>[0,2,4].map(i=>parseInt(h.slice(i,i+2),16)/255);
+  const ATMOS={
+    harbor:{light:[1,1,1],haze:"b8dde0",top:"cdeef0",vig:"0a2a3a42"},
+    sea:{light:[1,1,1.02],haze:"bfe9ee",top:"d8f6f6",vig:"0a3a5a55",far:[55,130]},
+    market:{light:[1.06,1,.9],haze:"f3dcae",top:"ffe2a8",vig:"5a3a1a42"},
+    industry:{light:[1,.97,.93],haze:"c9b9a2",top:"d9c6a6",vig:"3a2f2852"},
+    lab:{light:[.94,.99,1.08],haze:"b7d3ec",top:"b9dcf5",vig:"17305a4a"},
+    civic:{light:[1,1.02,1],haze:"cfe6dc",top:"d4efe6",vig:"1a3a3042"},
+    culture:{light:[1.08,.97,.94],haze:"f0c2b4",top:"ffc9b0",vig:"5a2a3048"},
+    debate:{light:[1,.94,1.06],haze:"cdbfe0",top:"bfaed9",vig:"2c20504a"},
+    trade:{light:[1,1.01,1],haze:"bfe6ee",top:"c6f0f4",vig:"0a3a5a42"},
+    aid:{light:[1.02,1.02,.98],haze:"d6eadb",top:"dff3e8",vig:"1a3a3042"},
+    nature:{light:[.98,1.04,.96],haze:"c4e0c0",top:"d2efc6",vig:"123a2a46"},
+    action:{light:[1.05,1,.92],haze:"f2dcae",top:"ffe9b0",vig:"4a3a1c44"}
+  };
+  let atmo=ATMOS.harbor;
   function configure(name,landmarks){
+    atmo=ATMOS[name]||ATMOS.harbor;
     scene=name;points=landmarks;land=layouts[name]?.shape??harborLand;
     const stage=document.querySelector("#stage");
+    stage.style.setProperty("--vig","#"+atmo.vig);stage.style.setProperty("--sky-top","#"+atmo.top);
     stage.style.background=name==="sea"?"linear-gradient(#bfe9ee,#4fa9b8)":layouts[name]?"radial-gradient(ellipse at 56% 22%, #eef0c7, #"+layouts[name].sky+" 42%, #366873)":"";
     blockers.length=0;vertices=[];
     if(name==="harbor")terrain();else if(name==="sea")seaTerrain();else unitTerrain();
@@ -857,9 +876,9 @@
   function setup(){
     const program=gl.createProgram();
     const shaders=[
-      [gl.VERTEX_SHADER,`attribute vec3 point;attribute vec3 color;varying vec3 tint;varying float height;uniform vec3 eye;uniform vec3 right;uniform vec3 up;uniform vec3 front;uniform vec2 scale;uniform vec2 offset;
-        void main(){vec3 p=point-eye;float z=dot(p,front);gl_Position=vec4(dot(p,right)*scale.x+offset.x*z,dot(p,up)*scale.y+offset.y*z,1.0067*z-.8027,z);tint=color;height=point.y;}`],
-      [gl.FRAGMENT_SHADER,`precision mediump float;varying vec3 tint;varying float height;void main(){float lift=smoothstep(-.4,5.5,height);vec3 c=tint*(.93+.13*lift);float l=dot(c,vec3(.299,.587,.114));c=mix(vec3(l),c,1.12);c*=mix(vec3(.96,.99,1.04),vec3(1.05,1.0,.93),lift);gl_FragColor=vec4(min(c,vec3(1.)),1.0);}`]
+      [gl.VERTEX_SHADER,`attribute vec3 point;attribute vec3 color;varying vec3 tint;varying float height;varying vec2 ground;uniform vec3 eye;uniform vec3 right;uniform vec3 up;uniform vec3 front;uniform vec2 scale;uniform vec2 offset;
+        void main(){vec3 p=point-eye;float z=dot(p,front);gl_Position=vec4(dot(p,right)*scale.x+offset.x*z,dot(p,up)*scale.y+offset.y*z,1.0067*z-.8027,z);tint=color;height=point.y;ground=point.xz;}`],
+      [gl.FRAGMENT_SHADER,`precision mediump float;varying vec3 tint;varying float height;varying vec2 ground;uniform vec3 light;uniform vec3 haze;uniform vec4 fog;void main(){float lift=smoothstep(-.4,5.5,height);vec3 c=tint*(.93+.13*lift);float l=dot(c,vec3(.299,.587,.114));c=mix(vec3(l),c,1.12);c*=mix(vec3(.96,.99,1.04),vec3(1.05,1.0,.93),lift);c*=light;c=mix(c,haze,smoothstep(fog.x,fog.y,length(ground-fog.zw))*.82);gl_FragColor=vec4(min(c,vec3(1.)),1.0);}`]
     ];
     for(const [type,source] of shaders){
       const shader=gl.createShader(type);gl.shaderSource(shader,source);gl.compileShader(shader);
@@ -870,7 +889,7 @@
     if(!gl.getProgramParameter(program,gl.LINK_STATUS))throw new Error(gl.getProgramInfoLog(program));
     gl.useProgram(program);
     const attributes=["point","color"].map(name=>gl.getAttribLocation(program,name));
-    const uniforms=Object.fromEntries(["eye","right","up","front","scale","offset"].map(name=>[name,gl.getUniformLocation(program,name)]));
+    const uniforms=Object.fromEntries(["eye","right","up","front","scale","offset","light","haze","fog"].map(name=>[name,gl.getUniformLocation(program,name)]));
     gl.enable(gl.DEPTH_TEST);
     const staticBuffer=gl.createBuffer(), dynamicBuffer=gl.createBuffer();
 
@@ -972,6 +991,8 @@
     offset=home?[.01,.10]:[0,-.02];
     if(gpu){
       gl.viewport(0,0,w,h);gl.clear(gl.COLOR_BUFFER_BIT|gl.DEPTH_BUFFER_BIT);
+      const far=atmo.far||[21,58];
+      gl.uniform3fv(gpu.uniforms.light,atmo.light);gl.uniform3fv(gpu.uniforms.haze,hexRgb(atmo.haze));gl.uniform4f(gpu.uniforms.fog,far[0],far[1],cx,cz);
       for(const [key,value] of Object.entries({eye,right,up,front,scale,offset})){
         if(value.length===3)gl.uniform3fv(gpu.uniforms[key],value);else gl.uniform2fv(gpu.uniforms[key],value);
       }
