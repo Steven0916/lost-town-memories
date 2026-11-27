@@ -11,7 +11,10 @@
     const base = colors[hex] ??= hex.match(/../g).map(value => parseInt(value,16)/255);
     return base.map(value => Math.min(1, value * shade));
   }
+  let sc = 1, sy = 0, clock = 0;
+  function scaled(k, pivotY, draw) { const a = sc, b = sy; sc = k; sy = pivotY; draw(); sc = a; sy = b; }
   function transform([x,y,z]) {
+    if (sc !== 1) { x *= sc; z *= sc; y = sy + (y - sy) * sc; }
     const c = Math.cos(angle), s = Math.sin(angle);
     return [shift[0]+x*c+z*s,shift[1]+y,shift[2]+z*c-x*s];
   }
@@ -150,7 +153,7 @@
         prism(0,1.4,0,.3,.07,"2a2326",8);prism(0,1.47,0,.22,.55,"2a2326",8,.2);prism(0,1.5,0,.225,.1,"f0cd74",8);break;
       case "pirate":
         prism(0,1.42,0,.52,.09,"26262e",6,.46);prism(0,1.5,0,.3,.22,"26262e",6,.25);prism(0,1.415,0,.525,.03,"e0b84a",6);
-        box(0,1.5,.27,.1,.1,.03,"f5f2e6");box(.11,1.13,.235,.13,.13,.02,"111111");box(0,1.27,.226,.47,.025,.02,"111111");break;
+        box(0,1.5,.27,.1,.1,.03,"f5f2e6");box(.11,1.12,.262,.14,.14,.02,"111111");box(0,1.27,.255,.5,.03,.02,"111111");break;
       case "scholar":
         box(0,1.42,0,.4,.09,.4,"232f55");box(0,1.5,0,.64,.05,.64,"232f55");box(.33,1.32,0,.04,.2,.04,"ffd981");break;
       case "knight":
@@ -195,7 +198,9 @@
     coat=pal?pal.coat:(look.coat || coat);
     const pants=pal?pal.pants:(look.pants || "45494f"), shoes=pal?pal.shoes:(look.shoes || "5f4738");
     const skinDark=shadeHex(skin,.9), hasHat=cs?true:(!player||look.hat!=="bare");
-    at(x,elevation+(phase?Math.abs(Math.sin(phase))*.05:0),z,dir,()=>{
+    const idle=phase?0:Math.sin(clock*2.2+x*.7+z*.9)*.012;
+    const blink=((clock+seed*.37+x*.5)%3.6)<.13;
+    at(x,elevation+(phase?Math.abs(Math.sin(phase))*.05:idle),z,dir,()=>{
       if(!elevation)prism(0,.035,0,.43,.012,"5c8267",12);
       const sway=Math.sin(phase)*.18;
       // 腿、褲口、鞋
@@ -214,44 +219,58 @@
       box(0,.53,.228,.10,.055,.025,"c9a563");
       box(0,.98,.08,.36,.06,.3,"f4ecd2");
       for(const y of [.64,.76,.88])box(0,y,.222,.045,.045,.015,"e9d9a8");
-      // 手臂、袖口、手
+      if(!cs&&player&&look.gear==="pack"){
+        face([[-.27,1.0,.219],[-.15,1.0,.219],[.3,.56,.219],[.18,.56,.219]],"7a5a3c");
+        box(.24,.58,.222,.075,.075,.015,"c9a563");
+      }
+      // 手臂、袖口、手（手做成圓潤的拳頭）
       for(const s of [-1,1]){
         const z0=s*sway*.6;
-        box(s*.36,.52,z0,.16,.48,.17,coat);
-        box(s*.36,.5,z0,.185,.07,.195,"efe3c4");
-        box(s*.36,.44,z0,.14,.13,.15,shadeHex(skin,.95));
+        box(s*.36,.54,z0,.16,.46,.17,coat);
+        box(s*.36,.5,z0,.19,.07,.2,"efe3c4");
+        box(s*.36,.4,z0,.15,.13,.16,shadeHex(skin,.97));
+        box(s*.36,.37,z0+.005,.12,.05,.13,skinDark);
       }
-      // 脖子、頭、耳朵
       box(0,.93,0,.2,.1,.2,skinDark);
-      box(0,1.0,0,.46,.44,.44,skin);
-      for(const s of [-1,1])box(s*.245,1.1,0,.05,.12,.1,skinDark);
-      // 髮型：後髮、鬢角、瀏海（頭盔以外都會露出）
-      if(cs!=="knight"){
-        box(0,1.0,-.2,.48,.47,.08,hair);
-        for(const s of [-1,1]){box(s*.235,1.18,-.02,.04,.26,.4,hair);box(s*.17,1.31,.215,.1,.12,.03,hair);}
-        box(-.04,1.34,.215,.2,.1,.03,hair);
-        if(!hasHat)box(0,1.42,-.02,.48,.08,.46,hair);
-      }
-      // 臉：眼白、瞳孔、高光、眉、鼻、嘴、腮紅
-      for(const s of [-1,1]){
-        box(s*.11,1.15,.222,.1,.11,.02,"ffffff");
-        box(s*.11,1.15,.232,.055,.085,.02,"2b2f33");
-        box(s*.098,1.21,.245,.022,.022,.01,"ffffff");
-        box(s*.11,1.28,.226,.11,.025,.015,hair);
-        box(s*.16,1.07,.226,.08,.045,.01,"f2a58f");
-      }
-      box(0,1.08,.228,.05,.06,.04,shadeHex(skin,.93));
-      box(0,1.03,.226,.09,.022,.015,"a5524a");
-      // 頭飾
-      if(cs)costumeHead(cs);
-      else if(look.hat==="hood"){
-        prism(0,1.39,0,.34,.52,"695387",6,.035);
-      }else if(look.hat==="bare"){
-        // 不戴帽子：露出髮型
-      }else{
-        prism(0,1.37,0,.36,.065,hat,8);
-        prism(0,1.42,0,.26,.19,hat,8,.18);
-      }
+      // 頭部整體放大，做成可愛的大頭比例（頭飾、頭髮、五官一起縮放）
+      scaled(1.22,1.0,()=>{
+        if(cs!=="knight"){
+          box(0,1.0,0,.46,.44,.44,skin);
+          box(0,.985,.01,.4,.04,.4,skinDark);
+          for(const s of [-1,1])box(s*.245,1.1,0,.05,.12,.1,skinDark);
+        }
+        if(cs!=="knight"){
+          box(0,1.0,-.2,.48,.47,.08,hair);
+          for(const s of [-1,1]){box(s*.235,1.18,-.02,.04,.26,.4,hair);box(s*.17,1.31,.215,.1,.12,.03,hair);}
+          box(-.04,1.34,.215,.2,.1,.03,hair);
+          box(.1,1.37,.217,.1,.07,.03,hair);
+          if(!hasHat){box(0,1.42,-.02,.48,.08,.46,hair);box(.06,1.49,.05,.05,.13,.05,hair);box(-.12,1.49,0,.08,.06,.08,hair);}
+          // 五官
+          for(const s of [-1,1]){
+            if(blink){box(s*.11,1.17,.226,.1,.025,.02,"2b2f33");}
+            else{
+              box(s*.11,1.14,.222,.105,.12,.02,"ffffff");
+              box(s*.11,1.14,.232,.065,.1,.02,"4a5e82");
+              box(s*.11,1.15,.242,.036,.07,.015,"15181b");
+              box(s*.093,1.2,.25,.024,.024,.01,"ffffff");
+            }
+            box(s*.11,1.285,.226,.11,.025,.015,hair);
+            box(s*.165,1.07,.226,.08,.045,.01,"f2a58f");
+          }
+          box(0,1.08,.228,.05,.06,.04,shadeHex(skin,.93));
+          box(0,1.03,.226,.07,.022,.015,"a5524a");
+          for(const s of [-1,1])box(s*.05,1.045,.226,.025,.022,.015,"a5524a");
+        }
+        if(cs)costumeHead(cs);
+        else if(look.hat==="hood"){
+          prism(0,1.39,0,.34,.52,"695387",6,.035);
+        }else if(look.hat==="bare"){
+          // 不戴帽子：露出髮型
+        }else{
+          prism(0,1.37,0,.36,.065,hat,8);
+          prism(0,1.42,0,.26,.19,hat,8,.18);
+        }
+      });
       if(!cs&&look.coat==="367b67")box(0,.83,0,.62,.15,.46,"f0cd74");
       if(!cs&&look.coat==="a74f55")prism(0,.35,0,.44,.47,coat,8,.31);
       if(cs)costumeBody(cs,sway);
@@ -752,6 +771,7 @@
     software.putImageData(frameImage,0,0);
   }
   function render(state,time,dt){
+    clock=time;
     if(!gpu&&!software)return;
     width=canvas.clientWidth;height=canvas.clientHeight;
     if(!width||!height)return;
@@ -813,7 +833,7 @@
     if(costume!==undefined)window.travelOutfit={...previous,costume};
     vertices=[];
     try{person(0,0,dir,"556ea2","333f65",0,true);}finally{window.travelOutfit=previous;}
-    paintModel(canvas,saved,120*k,222*k,80*k);
+    paintModel(canvas,saved,120*k,226*k,74*k);
   }
   function ferry(canvas,progress,aboard,tint,kind="sail"){
     const saved=vertices;
