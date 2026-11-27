@@ -27,6 +27,7 @@
 <script defer src="wardrobe.js"></script>
 <script defer src="fleet.js"></script>
 <script defer src="game.js"></script>
+<script defer src="costumes.js"></script>
 <script defer src="fx.js"></script>
 <script defer src="cloud.js"></script>
 </head>
@@ -82,7 +83,7 @@
       </div>
     </section>
     <section id="mission" class="hud" hidden aria-live="polite">
-      <p class="eyebrow" id="mission-no"></p><h2 id="mission-title"></h2><p id="mission-hint"></p>
+      <p class="eyebrow" id="mission-no"></p><h2 id="mission-title"></h2><p id="mission-hint"></p><p id="scene-coins" class="scene-coins"></p>
       <div class="destination"><span aria-hidden="true">◆</span><button id="destination" type="button"></button></div>
       <button id="route-help" class="quiet" type="button" aria-pressed="false">找路提示</button>
     </section>
@@ -92,13 +93,13 @@
       <p id="sail-status"></p>
       <button id="sail-abort" class="quiet" type="button">回碼頭</button>
     </section>
-    <div id="progress" class="hud" hidden><span>記憶碎片</span><div class="gems" aria-hidden="true"><i></i><i></i><i></i></div><strong id="count" aria-live="polite"></strong></div>
+    <div id="progress" class="hud" hidden><span>記憶碎片</span><div class="gems" aria-hidden="true"><i></i><i></i><i></i></div><strong id="count" aria-live="polite"></strong><small id="skill-badge" class="skill-badge"></small></div>
     <div id="controls" hidden>
       <div class="dpad" aria-label="觸控移動">
         <button data-move="up" aria-label="往上走">▲</button><button data-move="left" aria-label="往左走">◀</button><button data-move="down" aria-label="往下走">▼</button><button data-move="right" aria-label="往右走">▶</button>
       </div>
       <button id="interact" class="primary interact" hidden type="button"></button>
-      <div class="world-actions"><button id="journal" class="quiet" type="button">線索筆記</button><button id="return" class="quiet" type="button">回到廣場</button></div>
+      <div class="world-actions"><button id="skill-btn" class="quiet skill" type="button" hidden></button><button id="journal" class="quiet" type="button">線索筆記</button><button id="return" class="quiet" type="button">回到廣場</button></div>
     </div>
     <div id="repair" class="repair" hidden role="status">✦ 城鎮的記憶正在復原 ✦</div>
     <div id="toast" class="toast" role="status" hidden></div>
@@ -110,6 +111,7 @@
 <dialog id="wardrobe" aria-labelledby="dress-title"><form method="dialog">
 <h2 id="dress-title">巡旅者的衣櫃</h2><div class="dress-layout">
 <div class="dress-preview"><canvas id="model" width="240" height="240" aria-label="目前的角色造型"></canvas><button id="rotate" class="quiet" type="button">轉動角色</button></div>
-<div id="clothes"></div></div><button class="primary" type="submit">穿好出發</button>
+<div id="clothes"></div></div><section id="costumes" aria-labelledby="costume-title"><h3 id="costume-title">專屬服裝・金幣購買</h3><div id="costume-list"></div></section>
+<button class="primary" type="submit">穿好出發</button>
 </form></dialog></body>
 </html>

@@ -50,6 +50,7 @@ function sanitizeProgress(input) {
 }
 
 const VEHICLE_IDS = ["sail", "jet", "kraken"];
+const COSTUME_IDS = ["base", "wind", "star", "pirate", "gold", "scholar", "knight"];
 function sanitizeWallet(w) {
   if (!w || typeof w !== "object") return null;
   const owned = [...new Set(["sail", ...(Array.isArray(w.owned) ? w.owned : [])])].filter((id) => VEHICLE_IDS.includes(id));
@@ -57,10 +58,17 @@ function sanitizeWallet(w) {
   if (w.earned && typeof w.earned === "object") {
     for (const [id, e] of Object.entries(w.earned).slice(0, 30)) {
       if (!UNIT_RE.test(id) && id !== "sample") continue;
-      earned[id] = { g: [0, 1, 2].map((i) => e?.g?.[i] === true), f: e?.f === true };
+      const flags = (arr, n) => Array.from({ length: n }, (_, i) => arr?.[i] === true);
+      earned[id] = { g: flags(e?.g, 3), f: e?.f === true, p: e?.p === true, c: flags(e?.c, 3), s: flags(e?.s, 8) };
     }
   }
-  return { coins: Math.max(0, Math.min(99999, Number(w.coins) | 0)), owned, selected: owned.includes(w.selected) ? w.selected : "sail", earned };
+  const cOwned = [...new Set(["base", ...(Array.isArray(w.costumes?.owned) ? w.costumes.owned : [])])].filter((id) => COSTUME_IDS.includes(id));
+  const last = /^\d{4}-\d{2}-\d{2}$/.test(w.daily?.last ?? "") ? w.daily.last : "";
+  return {
+    coins: Math.max(0, Math.min(99999, Number(w.coins) | 0)), owned, selected: owned.includes(w.selected) ? w.selected : "sail", earned,
+    costumes: { owned: cOwned, equipped: cOwned.includes(w.costumes?.equipped) ? w.costumes.equipped : "base" },
+    daily: { last, streak: last ? Math.max(0, Math.min(999, Number(w.daily.streak) | 0)) : 0 },
+  };
 }
 
 async function handleApi(request, env, url) {

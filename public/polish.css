@@ -174,3 +174,25 @@ dialog::backdrop{background:radial-gradient(ellipse at 50% 40%,#17434f99,#07161c
 #app[data-mode="sail"] .world-actions,#app[data-mode="sail"] #interact{display:none}
 #app[data-mode="sail"] #stage::after{background:radial-gradient(ellipse at 50% 45%,transparent 50%,#0a3a5a55 100%)}
 @media(max-width:700px){.veh-grid{grid-template-columns:1fr}.veh-card{display:grid;grid-template-columns:42% 1fr;column-gap:10px}.veh-card canvas{grid-row:1/5}.veh-card button,.veh-tag{grid-column:2}#sail-hud{left:8px;top:8px;max-width:calc(100% - 16px)}}
+
+/* ---- 服裝商店與技能 ---- */
+#wardrobe{width:min(44rem,95vw)}
+#costumes{margin:1rem 0;padding-top:.9rem;border-top:1px dashed #cdb98a}
+#costumes h3{font-size:1.05rem;margin-bottom:.3rem}
+.costume-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(10.5rem,1fr));gap:.6rem;margin-top:.5rem}
+.costume-card{display:flex;flex-direction:column;gap:.25rem;padding:.55rem;border:2px solid #e0d1a6;border-radius:.8rem;background:linear-gradient(180deg,#fffdf5,#f6efd8);transition:transform .2s var(--ease),border-color .2s}
+.costume-card:hover{transform:translateY(-2px)}
+.costume-card.on{border-color:#4b8575;box-shadow:0 0 0 3px #4b857533}
+.costume-card canvas{width:100%;height:auto;border-radius:.6rem;background:linear-gradient(#e9f3ea,#cfe2cf)}
+.costume-card.locked canvas{filter:saturate(.7)}
+.costume-card h4{font:800 1rem "Noto Serif TC",serif;margin:0}
+.costume-card p{margin:0;font-size:.8rem;line-height:1.45;color:#46594f}
+.skill-line{color:#8a4b1c!important}
+.costume-card button{margin-top:auto;width:100%}
+#wardrobe:not([data-costume="base"]) #clothes{opacity:.4;pointer-events:none}
+.scene-coins{margin-top:6px;font-size:13px;color:#ffe6a0;font-weight:700}
+.scene-coins:empty{display:none}
+.skill-badge{display:block;margin-top:8px;font-size:12px;color:#ffe6a0;font-weight:700}
+.skill:disabled{opacity:.65;cursor:default}
+.star-row{margin:6px 0 0}
+@media(max-width:600px){.costume-grid{grid-template-columns:1fr 1fr}}
