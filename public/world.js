@@ -550,6 +550,15 @@
     at(g[0],0,g[1],time*.9,()=>crystal(0,3.2+Math.sin(time*2.6)*.2,0,.5,"ffd871"));
   }
   function configureSea(info){sea=info;configure("sea",[]);}
+  // 單元 Boss：放大的「海盜王」，外觀隨單元換服裝，周圍環繞火焰水晶
+  function bossPreview(canvas,costume){
+    const previous=window.travelOutfit,saved=vertices;
+    window.travelOutfit={costume,hair:"25201e",skin:"d9a074",weapon:3,armor:3,boots:3};
+    vertices=[];
+    try{scaled(1.35,0,()=>person(0,0,.55,"7a2e3a","26262e",0,true));}finally{window.travelOutfit=previous;}
+    for(let i=0;i<6;i++){const a=i*1.047;crystal(Math.cos(a)*1.9,.9+(i%3)*.5,Math.sin(a)*1.1,.14,i%2?"ff7a45":"ffb347");}
+    paintModel(canvas,saved,canvas.width*.5,canvas.height*.9,canvas.height*.29);
+  }
   function vehiclePreview(canvas,kind,angle,time=0){
     const saved=vertices;vertices=[];
     vehicle(kind,0,0,angle,time);
@@ -919,5 +928,5 @@
     ctx.imageSmoothingEnabled=true;ctx.imageSmoothingQuality="high";
     ctx.drawImage(tmp,0,0,canvas.width,canvas.height);
   }
-  window.World={ferry,preview,configureSea,vehiclePreview,render,project,walkable,spawn,configure,available:Boolean(gpu||software)};
+  window.World={ferry,preview,configureSea,vehiclePreview,bossPreview,render,project,walkable,spawn,configure,available:Boolean(gpu||software)};
 })();

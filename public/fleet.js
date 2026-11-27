@@ -51,11 +51,13 @@
   const REWARD = { gem: 10, finish: 20, perfect: 15, scene: 3, sea: 2, chest: 6, dailyBase: 5, dailyStep: 2, dailyMax: 7,
     battleHit: 2, battleWin: 12 };
   const PIRATE = { hp: 30, damage: 20 };
+const MAX_LEVEL = 5, MAX_MISTAKES = 60, REVIEW_DAILY = 10;
 
   const fresh = () => ({
     coins: 0, owned: ["sail"], selected: "sail", earned: {},
     costumes: { owned: ["base"], equipped: "base" }, daily: { last: "", streak: 0 },
-    gear: { owned: [], equipped: { weapon: "", armor: "", boots: "" } }, wins: 0,
+    gear: { owned: [], equipped: { weapon: "", armor: "", boots: "" }, levels: {} }, wins: 0,
+    shards: 0, mistakes: [], bosses: {}, review: { day: "", n: 0 },
   });
   const flags = (arr, n) => Array.from({ length: n }, (_, i) => arr?.[i] === true);
   function sanitize(raw) {
@@ -80,6 +82,22 @@
       w.gear.equipped[slot] = w.gear.owned.includes(id) && GEAR.find((g) => g.id === id)?.slot === slot ? id : "";
     }
     w.wins = Math.max(0, Math.min(99999, Number(raw.wins) | 0));
+    for (const g of GEAR) {
+      const lv = Number(raw.gear?.levels?.[g.id]) | 0;
+      if (w.gear.owned.includes(g.id) && lv > 0) w.gear.levels[g.id] = Math.min(MAX_LEVEL, lv);
+    }
+    w.shards = Math.max(0, Math.min(9999, Number(raw.shards) | 0));
+    const txt = (v, n) => String(v ?? "").slice(0, n);
+    if (Array.isArray(raw.mistakes)) {
+      w.mistakes = raw.mistakes.slice(0, MAX_MISTAKES).filter((m) => m && typeof m.q === "string" && typeof m.a === "string" && Array.isArray(m.o)).map((m) => ({
+        u: txt(m.u, 12), q: txt(m.q, 200), a: txt(m.a, 120), e: txt(m.e, 200), c: txt(m.c, 300),
+        o: m.o.slice(0, 5).map((x) => txt(x, 120)), n: Math.max(1, Math.min(99, Number(m.n) | 0 || 1)), t: Number(m.t) | 0,
+      }));
+    }
+    if (raw.bosses && typeof raw.bosses === "object") {
+      for (const id of Object.keys(raw.bosses).slice(0, 30)) if (/^[a-z]{3,12}$/.test(id) && raw.bosses[id] === true) w.bosses[id] = true;
+    }
+    if (/^\d{4}-\d{2}-\d{2}$/.test(raw.review?.day ?? "")) w.review = { day: raw.review.day, n: Math.max(0, Math.min(99, Number(raw.review.n) | 0)) };
     return w;
   }
   let wallet;
@@ -90,11 +108,13 @@
   const findG = (id) => GEAR.find((g) => g.id === id);
   const skillId = () => findC(wallet.costumes.equipped)?.skill.id ?? "curious";
 
+  const levelOf = (id) => wallet.gear.levels[id] || 0;
+  const gearValue = (g) => Math.round(g.value * (1 + .2 * levelOf(g.id)));
   function stats() {
     const bonus = { hp: 0, sta: 0, atk: 0 };
     for (const id of Object.values(wallet.gear.equipped)) {
       const g = findG(id);
-      if (g) bonus[SLOTS[g.slot].stat] += g.value;
+      if (g) bonus[SLOTS[g.slot].stat] += gearValue(g);
     }
     return { hp: BASE.hp + bonus.hp, sta: BASE.sta + bonus.sta, atk: BASE.atk + bonus.atk, bonus };
   }
@@ -168,7 +188,7 @@
       const tier = first ? 1 : roll < .08 ? 3 : roll < .35 ? 2 : 1;
       const slot = Object.keys(SLOTS)[Math.floor(Math.random() * 3)];
       const item = GEAR.find((g) => g.slot === slot && g.tier === tier);
-      if (wallet.gear.owned.includes(item.id)) return { item, duplicate: true };
+      if (wallet.gear.owned.includes(item.id)) { const shards = item.tier * 2; wallet.shards += shards; commit(); return { item, duplicate: true, shards }; }
       wallet.gear.owned.push(item.id);
       if (!wallet.gear.equipped[slot]) wallet.gear.equipped[slot] = item.id;
       commit();
@@ -197,6 +217,83 @@
       const g = findG(id);
       if (!g || !wallet.gear.owned.includes(id)) return false;
       wallet.gear.equipped[g.slot] = id; commit(); return true;
+    },
+    // ---- 裝備強化、合成、分解 ----
+    maxLevel: MAX_LEVEL,
+    levelOf, gearValue,
+    upgradeCost(id) {
+      const g = findG(id), lv = levelOf(id);
+      return !g || lv >= MAX_LEVEL ? null : { coins: 25 * g.tier * (lv + 1), shards: g.tier * (lv + 1) };
+    },
+    upgrade(id) {
+      const cost = this.upgradeCost(id);
+      if (!cost || !wallet.gear.owned.includes(id) || wallet.coins < cost.coins || wallet.shards < cost.shards) return false;
+      wallet.coins -= cost.coins; wallet.shards -= cost.shards; wallet.gear.levels[id] = levelOf(id) + 1; commit(); return true;
+    },
+    craftInfo(id) {
+      const g = findG(id);
+      if (!g || g.tier < 2) return null;
+      return { lower: GEAR.find((x) => x.slot === g.slot && x.tier === g.tier - 1), cost: g.tier === 2 ? { coins: 120, shards: 6 } : { coins: 300, shards: 15 } };
+    },
+    craft(id) {
+      const info = this.craftInfo(id);
+      if (!info || wallet.gear.owned.includes(id) || !wallet.gear.owned.includes(info.lower.id)) return false;
+      if (wallet.coins < info.cost.coins || wallet.shards < info.cost.shards) return false;
+      wallet.coins -= info.cost.coins; wallet.shards -= info.cost.shards;
+      const g = findG(id), wasEquipped = wallet.gear.equipped[g.slot] === info.lower.id;
+      wallet.gear.owned = wallet.gear.owned.filter((x) => x !== info.lower.id);
+      delete wallet.gear.levels[info.lower.id];
+      wallet.gear.owned.push(id);
+      if (wasEquipped || !wallet.gear.equipped[g.slot]) wallet.gear.equipped[g.slot] = id;
+      commit(); return true;
+    },
+    dismantle(id) {
+      const g = findG(id);
+      if (!g || !wallet.gear.owned.includes(id) || wallet.gear.equipped[g.slot] === id) return 0;
+      const shards = g.tier * 3;
+      wallet.gear.owned = wallet.gear.owned.filter((x) => x !== id);
+      delete wallet.gear.levels[id];
+      wallet.shards += shards; commit(); return shards;
+    },
+    // ---- 錯題本 ----
+    mistakes: () => wallet.mistakes.map((m) => ({ ...m, key: m.u + "|" + m.q })),
+    addMistake(m) {
+      const key = m.u + "|" + m.q;
+      const found = wallet.mistakes.find((x) => x.u + "|" + x.q === key);
+      if (found) { found.n = Math.min(99, found.n + 1); found.t = Date.now(); }
+      else {
+        wallet.mistakes.unshift({ u: String(m.u).slice(0, 12), q: String(m.q).slice(0, 200), a: String(m.a).slice(0, 120), e: String(m.e || "").slice(0, 200),
+          c: String(m.c || "").slice(0, 300), o: m.o.slice(0, 5).map((x) => String(x).slice(0, 120)), n: 1, t: Date.now() });
+        wallet.mistakes = wallet.mistakes.slice(0, MAX_MISTAKES);
+      }
+      commit();
+    },
+    clearMistake(key) { wallet.mistakes = wallet.mistakes.filter((x) => x.u + "|" + x.q !== key); commit(); },
+    reviewReward() {
+      const day = today();
+      if (wallet.review.day !== day) wallet.review = { day, n: 0 };
+      if (wallet.review.n >= REVIEW_DAILY) return 0;
+      wallet.review.n += 1;
+      const coins = grant(1); commit(); return coins;
+    },
+    reviewLeft: () => (wallet.review.day === today() ? Math.max(0, REVIEW_DAILY - wallet.review.n) : REVIEW_DAILY),
+    // ---- 單元 Boss：首次擊敗必得一件傳說裝備 ----
+    bossCleared: (unit) => wallet.bosses[unit] === true,
+    bossClear(unit) {
+      const first = !wallet.bosses[unit];
+      wallet.bosses[unit] = true;
+      let coins = grant(first ? 40 : 5), loot = null;
+      if (first) {
+        const missing = GEAR.filter((g) => g.tier === 3 && !wallet.gear.owned.includes(g.id));
+        if (missing.length) {
+          const item = missing[Math.floor(Math.random() * missing.length)];
+          wallet.gear.owned.push(item.id);
+          if (!wallet.gear.equipped[item.slot]) wallet.gear.equipped[item.slot] = item.id;
+          loot = { item };
+        } else { const bonus = grant(50); coins += bonus; loot = { bonus }; }
+      }
+      commit();
+      return { first, coins, loot };
     },
     unequipGear(slot) { if (!SLOTS[slot]) return false; wallet.gear.equipped[slot] = ""; commit(); return true; },
     replace(raw) { wallet = sanitize(raw); commit(true); },

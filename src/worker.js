@@ -71,8 +71,19 @@ function sanitizeWallet(w) {
     const id = w.gear?.equipped?.[slot];
     equipped[slot] = gOwned.includes(id) && GEAR_IDS[id] === slot ? id : "";
   }
+  const levels = {};
+  for (const id of gOwned) { const lv = Number(w.gear?.levels?.[id]) | 0; if (lv > 0) levels[id] = Math.min(5, lv); }
+  const txt = (v, n) => String(v ?? "").replace(/[\u0000-\u001f<>]/g, "").slice(0, n);
+  const mistakes = (Array.isArray(w.mistakes) ? w.mistakes : []).slice(0, 60)
+    .filter((m) => m && typeof m.q === "string" && typeof m.a === "string" && Array.isArray(m.o))
+    .map((m) => ({ u: txt(m.u, 12), q: txt(m.q, 200), a: txt(m.a, 120), e: txt(m.e, 200), c: txt(m.c, 300),
+      o: m.o.slice(0, 5).map((x) => txt(x, 120)), n: Math.max(1, Math.min(99, Number(m.n) | 0 || 1)), t: Number(m.t) | 0 }));
+  const bosses = {};
+  if (w.bosses && typeof w.bosses === "object") for (const id of Object.keys(w.bosses).slice(0, 30)) if (UNIT_RE.test(id) && w.bosses[id] === true) bosses[id] = true;
+  const rday = /^\d{4}-\d{2}-\d{2}$/.test(w.review?.day ?? "") ? w.review.day : "";
   return {
-    gear: { owned: gOwned, equipped }, wins: Math.max(0, Math.min(99999, Number(w.wins) | 0)),
+    shards: Math.max(0, Math.min(9999, Number(w.shards) | 0)), mistakes, bosses, review: { day: rday, n: rday ? Math.max(0, Math.min(99, Number(w.review.n) | 0)) : 0 },
+    gear: { owned: gOwned, equipped, levels }, wins: Math.max(0, Math.min(99999, Number(w.wins) | 0)),
     coins: Math.max(0, Math.min(99999, Number(w.coins) | 0)), owned, selected: owned.includes(w.selected) ? w.selected : "sail", earned,
     costumes: { owned: cOwned, equipped: cOwned.includes(w.costumes?.equipped) ? w.costumes.equipped : "base" },
     daily: { last, streak: last ? Math.max(0, Math.min(999, Number(w.daily.streak) | 0)) : 0 },

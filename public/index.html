@@ -30,6 +30,7 @@
 <script defer src="game.js"></script>
 <script defer src="costumes.js"></script>
 <script defer src="gear.js"></script>
+<script defer src="review.js"></script>
 <script defer src="fx.js"></script>
 <script defer src="cloud.js"></script>
 </head>
@@ -41,6 +42,7 @@
     <button id="switch" class="quiet" type="button" hidden>選單元</button>
     <button id="dress" class="quiet" type="button">角色換裝</button>
     <button id="coins" class="quiet coin-chip" type="button" aria-label="金幣與載具船塢">🪙 <span id="coin-count">0</span></button>
+    <button id="book-btn" class="quiet" type="button" aria-label="錯題本">📕<span class="lbl"> 錯題本</span><span id="book-count" class="badge"></span></button>
     <button id="cloud-btn" class="quiet" type="button">☁<span class="lbl"> 我的紀錄</span></button>
     <button id="sound" class="quiet" type="button" aria-pressed="true" aria-label="開關音效"><span class="ico">🔊</span><span class="lbl"> 音效</span></button>
     <button id="help" class="quiet" type="button">操作說明</button>
@@ -110,6 +112,7 @@
   <footer><div class="keys"><span class="key">W</span> <span class="key">A</span> <span class="key">S</span> <span class="key">D</span> <span>或方向鍵移動</span><span class="key key-e">E</span><span>互動</span></div><span id="footer-source"></span></footer>
 </div>
 <dialog id="dialog" aria-labelledby="dialog-title"><div id="dialog-body"></div></dialog>
+<dialog id="review" aria-labelledby="review-title"><div id="review-body"></div></dialog>
 <dialog id="cloud" aria-labelledby="cloud-title"><div id="cloud-body"></div></dialog>
 <dialog id="wardrobe" aria-labelledby="dress-title"><form method="dialog">
 <h2 id="dress-title">巡旅者的衣櫃</h2><div class="dress-layout">

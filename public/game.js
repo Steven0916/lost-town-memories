@@ -311,7 +311,7 @@
   dialog.addEventListener("cancel",event=>{event.preventDefault();if(body.dataset.locked!=="true")close();});
   // 點視窗外的空白處關閉（需按下與放開都在視窗外；進行中的關卡序幕、通關畫面等鎖定視窗會輕輕晃動提示）
   const outside=(box,event)=>{const r=box.getBoundingClientRect();return event.clientX<r.left||event.clientX>r.right||event.clientY<r.top||event.clientY>r.bottom;};
-  for(const box of [dialog,$("#cloud"),$("#wardrobe")]){
+  for(const box of [dialog,$("#cloud"),$("#wardrobe"),$("#review")]){
     let pressedOutside=false;
     box.addEventListener("pointerdown",event=>{pressedOutside=event.target===box&&outside(box,event);});
     box.addEventListener("click",event=>{
@@ -648,11 +648,11 @@
     saveProgress(true);
     showFinish();
   }
-  function showFinish(){
-    fx("win");
+  function showFinish(quiet=false){
+    if(!quiet)fx("win");
     mode("end");$("#repair").hidden=true;
     open("城鎮記憶回來了！","三枚碎片已集齊",
-      finishLines+actions(action("前往碼頭搭船","dock"),action("回首頁","home","quiet"))+
+      finishLines+actions(...(course?[action(Fleet.bossCleared(course.id)?"再戰單元 Boss（已擊敗 ✓）":"⚔️ 挑戰單元 Boss","boss","quiet")]:[]),action("前往碼頭搭船","dock"),action("回首頁","home","quiet"))+
       '<h3>你用過的三條線索</h3><ol>'+records.map(record=>'<li>'+esc(record)+'</li>').join("")+'</ol>'+
       '<h3>全班一起討論</h3><p class="discuss">'+esc(lesson.discussion)+'</p>'+
       (course?'<p class="source-note">課程對照及史實參考 · <a href="'+esc(course.source)+'" target="_blank" rel="noopener">查看來源</a></p>':"")+
@@ -697,93 +697,135 @@
     const maxHp=Fleet.stats().hp;
     stam=Fleet.stats().sta;winded=false;
     sailRun={next,v,route,total,danger:0,hit:false,hitT:0,progress:0,status:"",hp:maxHp,maxHp,
-      quiz:window.Quiz.forUnit(course),originName:course?.unit??"港灣市集",ambushed:[false,false],alarm:0,grace:0,battle:null};
+      quiz:window.Quiz.forUnit(course),originName:course?.unit??"港灣市集",originId:course?.id??"sample",ambushed:[false,false],alarm:0,grace:0,battle:null};
     mode("sail");
     set("#sail-vehicle",v.icon+" "+v.name);set("#sail-title","前往"+next.chapter);
     set("#sail-status","方向鍵或 WASD 駕駛，按住 Shift 衝刺。路上有金幣、寶箱，也可能遇到海盜！"+(state.shield?" 🛡️ 守護光盾已啟動。":""));
     $("#sail-fill").style.width="0%";
     $("#stage").focus({preventScroll:true});
   }
-  // ---- 海盜戰鬥：回答剛通關單元的題目 ----
+  // ---- 戰鬥（海盜／單元 Boss 共用）：回答剛通關單元的題目來攻擊 ----
+  let fight=null;
+  const BOSS_LOOK=["pirate","knight","star","gold","scholar","wind"];
+  const newFight=options=>({used:new Set(),q:null,answered:false,eliminated:new Set(),free:Fleet.skillId()==="retry",shield:false,...options});
+  const attackPower=()=>Fleet.stats().atk*(fight?.kind==="boss"?2:1);
+  function takeShield(){
+    if(fight.kind==="sea"){if(state.shield){state.shield=false;return true;}return false;}
+    if(fight.shield){fight.shield=false;return true;}
+    return false;
+  }
   function startBattle(){
     const r=sailRun;
     if(!r||r.battle)return;
     r.alarm=0;
     if(!r.quiz.length){r.grace=8;state.pirates=[];return;}
-    r.battle={pirate:Fleet.pirate.hp,max:Fleet.pirate.hp,free:Fleet.skillId()==="retry",used:new Set(),q:null,answered:false,eliminated:new Set()};
     keys.clear();touch.clear();sprintHeld=false;touchSprint=false;state.speed=0;
     if(!state.pirates.length)state.pirates=[{x:state.x+Math.sin(state.dir)*12+Math.cos(state.dir)*6,z:state.z+Math.cos(state.dir)*12-Math.sin(state.dir)*6,dir:0}];
     fx("hit");
+    fight=newFight({kind:"sea",title:"海盜來襲！",enemy:{name:"海盜",icon:"🏴‍☠️",hp:Fleet.pirate.hp,max:Fleet.pirate.hp,dmg:Fleet.pirate.damage},
+      hp:r.hp,maxHp:r.maxHp,quiz:r.quiz,originName:r.originName,originId:r.originId,guard:r.v.guard});
+    r.battle=fight;
+    nextQuestion();
+  }
+  function startBoss(){
+    if(!course)return;
+    const stats=Fleet.stats(),index=units.indexOf(course);
+    keys.clear();touch.clear();sprintHeld=false;touchSprint=false;
+    fx("hit");
+    fight=newFight({kind:"boss",title:"單元 Boss 登場！",enemy:{name:"海盜王・"+course.chapter,icon:"👑",hp:100,max:100,dmg:35},
+      hp:stats.hp,maxHp:stats.hp,quiz:window.Quiz.forUnit(course),originName:course.unit,originId:course.id,guard:1,
+      boss:BOSS_LOOK[index%BOSS_LOOK.length],shield:Fleet.skillId()==="shield"});
     nextQuestion();
   }
   function nextQuestion(){
-    const b=sailRun.battle,pool=sailRun.quiz;
-    let free=pool.map((_,i)=>i).filter(i=>!b.used.has(i));
-    if(!free.length){b.used.clear();free=pool.map((_,i)=>i);}
+    const pool=fight.quiz;
+    let free=pool.map((_,i)=>i).filter(i=>!fight.used.has(i));
+    if(!free.length){fight.used.clear();free=pool.map((_,i)=>i);}
     const pick=free[Math.floor(Math.random()*free.length)];
-    b.used.add(pick);b.q=pool[pick];b.answered=false;b.eliminated=new Set();
-    renderBattle();
+    fight.used.add(pick);fight.q=pool[pick];fight.answered=false;fight.eliminated=new Set();
+    renderFight();
   }
-  function battleBars(){
-    const r=sailRun,b=r.battle;
-    return '<div class="battle-bars"><div class="bar-row"><span>🏴‍☠️ 海盜</span><div class="hpbar enemy"><i style="width:'+Math.round(b.pirate/b.max*100)+'%"></i></div><b>'+b.pirate+' / '+b.max+'</b></div>'+
-      '<div class="bar-row"><span>❤️ 你</span><div class="hpbar"><i style="width:'+Math.round(r.hp/r.maxHp*100)+'%"></i></div><b>'+r.hp+' / '+r.maxHp+'</b></div></div>';
+  function fightBars(){
+    const f=fight;
+    return '<div class="battle-bars"><div class="bar-row"><span>'+f.enemy.icon+" "+(f.kind==="boss"?"Boss":"海盜")+'</span><div class="hpbar enemy"><i style="width:'+Math.round(f.enemy.hp/f.enemy.max*100)+'%"></i></div><b>'+f.enemy.hp+" / "+f.enemy.max+"</b></div>"+
+      '<div class="bar-row"><span>❤️ 你</span><div class="hpbar"><i style="width:'+Math.round(f.hp/f.maxHp*100)+'%"></i></div><b>'+f.hp+" / "+f.maxHp+"</b></div></div>";
   }
-  function renderBattle(resultHtml=""){
-    const r=sailRun,b=r.battle,q=b.q;
+  function renderFight(resultHtml=""){
+    const f=fight,q=f.q;
     const star=Fleet.skillId()==="star"?action("✦ 星象提示（剩 "+starLeft+" 次）","battle-star","quiet"):"";
+    const art=f.kind==="boss"?'<canvas class="boss-art" width="240" height="200" aria-label="'+esc(f.enemy.name)+'"></canvas><p class="boss-name">'+esc(f.enemy.name)+"</p>":"";
     const view=resultHtml||(
-      '<details class="battle-clue"><summary>📜 回看線索</summary><p class="dialog-text">'+esc(q.clue||"想想這個單元學到的內容。")+'</p></details>'+
-      '<p class="battle-q">'+esc(q.q)+'</p>'+
-      '<div class="battle-options">'+q.options.map((option,i)=>'<button type="button" class="battle-opt" data-action="ans-'+i+'"'+(b.eliminated.has(i)?" disabled":"")+">"+esc(option)+"</button>").join("")+"</div>"+
+      '<details class="battle-clue"><summary>📜 回看線索</summary><p class="dialog-text">'+esc(q.clue||"想想這個單元學到的內容。")+"</p></details>"+
+      '<p class="battle-q">'+esc(q.q)+"</p>"+
+      '<div class="battle-options">'+q.options.map((option,i)=>'<button type="button" class="battle-opt" data-action="ans-'+i+'"'+(f.eliminated.has(i)?" disabled":"")+">"+esc(option)+"</button>").join("")+"</div>"+
       '<div class="dialog-actions">'+star+"</div>");
-    open("海盜來襲！","答對就攻擊（攻擊力 "+Fleet.stats().atk+"）· 回答「"+r.originName+"」",battleBars()+view,{closable:false});
+    open(f.title,(f.kind==="boss"?"每次答對造成 ":"答對就攻擊（")+attackPower()+" 傷害"+(f.kind==="boss"?"":"）")+" · 回答「"+f.originName+"」",art+fightBars()+view,{closable:false});
+    if(f.kind==="boss")world.bossPreview(body.querySelector(".boss-art"),f.boss);
   }
-  function answerBattle(index){
-    const r=sailRun,b=r&&r.battle;
-    if(!b||b.answered)return;
-    b.answered=true;
-    const q=b.q,ok=index===q.answer;
+  function answerFight(index){
+    const f=fight;
+    if(!f||f.answered)return;
+    f.answered=true;
+    const q=f.q,ok=index===q.answer;
     const correct='<p class="dialog-text">正確答案：<strong>'+esc(q.options[q.answer])+"</strong></p>"+(q.explain?'<p class="dialog-text small">'+esc(q.explain)+"</p>":"");
     if(ok){
-      const damage=Fleet.stats().atk;
-      b.pirate=Math.max(0,b.pirate-damage);
+      const damage=attackPower();
+      f.enemy.hp=Math.max(0,f.enemy.hp-damage);
       const coins=Fleet.addCoins(Fleet.reward.battleHit);
       fx("gem");
-      if(b.pirate<=0){battleVictory(damage,correct);return;}
-      renderBattle('<p class="battle-result ok">✅ 答對了！你揮出一擊，造成 '+damage+" 點傷害！ 🪙 +"+coins+"</p>"+correct+actions(action("繼續戰鬥","battle-next")));
+      if(f.enemy.hp<=0){fightVictory(damage,correct);return;}
+      renderFight('<p class="battle-result ok">✅ 答對了！你揮出一擊，造成 '+damage+" 點傷害！ 🪙 +"+coins+"</p>"+correct+actions(action("繼續戰鬥","battle-next")));
       return;
     }
-    let damage=Math.round(Fleet.pirate.damage*r.v.guard),note="";
-    if(state.shield){state.shield=false;damage=0;note="🛡️ 守護光盾擋下了這次砲擊！";fx("skill");}
-    else if(b.free){b.free=false;damage=0;note="🎓 再試一次：這次不會受傷。";fx("skill");}
+    // 答錯：記進錯題本，並被攻擊
+    Fleet.addMistake({u:f.originId,q:q.q,a:q.options[q.answer],e:q.explain,c:q.clue,o:q.options});
+    let damage=Math.round(f.enemy.dmg*f.guard),note="";
+    if(takeShield()){damage=0;note="🛡️ 守護光盾擋下了這次攻擊！";fx("skill");}
+    else if(f.free){f.free=false;damage=0;note="🎓 再試一次：這次不會受傷。";fx("skill");}
     else fx("hit");
-    r.hp=Math.max(0,r.hp-damage);
-    if(r.hp<=0){
-      renderBattle('<p class="battle-result bad">💫 你的生命值歸零，被海盜擊倒了！</p>'+correct+'<p class="dialog-text">別氣餒，回碼頭整備後再出發。</p>'+actions(action("回碼頭整備","battle-retreat")));
+    f.hp=Math.max(0,f.hp-damage);
+    if(f.kind==="sea")sailRun.hp=f.hp;
+    const saved="<p class=\"dialog-text small\">📕 這題已收進錯題本，之後可以到「錯題本」複習。</p>";
+    if(f.hp<=0){
+      renderFight('<p class="battle-result bad">💫 你的生命值歸零，被擊倒了！</p>'+correct+saved+
+        (f.kind==="sea"?'<p class="dialog-text">別氣餒，回碼頭整備後再出發。</p>'+actions(action("回碼頭整備","battle-retreat")):
+          '<p class="dialog-text">換上更好的裝備再來挑戰吧！</p>'+actions(action("返回通關畫面","boss-back","quiet"),action("再挑戰一次","boss"))));
       return;
     }
-    renderBattle('<p class="battle-result bad">❌ 答錯了…海盜開砲！'+(damage?"你受到 "+damage+" 點傷害。":"")+(note?"<br>"+note:"")+"</p>"+correct+actions(action("繼續戰鬥","battle-next")));
+    renderFight('<p class="battle-result bad">❌ 答錯了…'+(f.kind==="boss"?"Boss":"海盜")+"反擊！"+(damage?"你受到 "+damage+" 點傷害。":"")+(note?"<br>"+note:"")+"</p>"+correct+saved+actions(action("繼續戰鬥","battle-next")));
   }
-  function battleVictory(damage,correct){
+  function fightVictory(damage,correct){
+    const f=fight;
+    fx("win");
+    let html="";
+    if(f.kind==="boss"){
+      const result=Fleet.bossClear(f.originId);
+      html+='<p class="coin-gain">🪙 +'+result.coins+"（"+(result.first?"首次擊敗獎勵":"再次挑戰獎勵")+"）</p>";
+      if(result.loot?.item){
+        const g=result.loot.item;
+        html+='<p class="loot">'+g.icon+" 獲得傳說裝備「"+esc(g.name)+"」！（"+Fleet.gear.slots[g.slot].label+" +"+g.value+"）"+(Fleet.get().gear.equipped[g.slot]===g.id?"已自動穿上。":"已放進背包。")+"</p>";
+      }else if(result.loot?.bonus)html+='<p class="loot">傳說裝備你都集齊了！額外獎勵 🪙 +'+result.loot.bonus+"</p>";
+      renderFight('<p class="battle-result ok">🎉 答對了！造成 '+damage+" 點傷害，Boss 倒下了！</p>"+correct+html+actions(action("返回通關畫面","boss-back")));
+      return;
+    }
     const r=sailRun;
     Fleet.recordWin();
     const coins=Fleet.addCoins(Fleet.reward.battleWin);
     const loot=Fleet.rollLoot();
-    r.hp=Math.min(r.maxHp,r.hp+Math.round(r.maxHp*.2));
-    fx("win");
-    let html='<p class="coin-gain">🪙 +'+coins+" 金幣（擊敗獎勵）</p>";
+    r.hp=Math.min(r.maxHp,f.hp+Math.round(r.maxHp*.2));
+    html+='<p class="coin-gain">🪙 +'+coins+" 金幣（擊敗獎勵）</p>";
     if(loot){
       const g=loot.item,slot=Fleet.gear.slots[g.slot];
-      if(loot.duplicate)html+='<p class="loot">'+g.icon+" 撿到「"+esc(g.name)+"」，但你已經有了，換成 🪙 +"+Fleet.addCoins(15)+"</p>";
+      if(loot.duplicate)html+='<p class="loot">'+g.icon+" 撿到「"+esc(g.name)+"」，但你已經有了，拆成 🧩 碎片 ×"+loot.shards+"（可用來強化、合成裝備）</p>";
       else html+='<p class="loot">'+g.icon+" 獲得裝備「"+esc(g.name)+"」！（"+Fleet.gear.tiers[g.tier]+"・"+slot.label+" +"+g.value+"）"+
         (Fleet.get().gear.equipped[g.slot]===g.id?"已自動穿上。":"已放進背包，可到「角色換裝」穿上。")+"</p>";
     }
-    renderBattle('<p class="battle-result ok">✅ 答對了！造成 '+damage+" 點傷害，海盜被擊敗了！</p>"+correct+html+'<p class="dialog-text small">休息一下，生命值恢復了一些。</p>'+actions(action("繼續航行","battle-end")));
+    renderFight('<p class="battle-result ok">✅ 答對了！造成 '+damage+" 點傷害，海盜被擊敗了！</p>"+correct+html+'<p class="dialog-text small">休息一下，生命值恢復了一些。</p>'+actions(action("繼續航行","battle-end")));
   }
   function endBattle(){
     close();
     const r=sailRun;
+    fight=null;
     if(!r)return;
     r.battle=null;r.danger=0;r.grace=8;state.pirates=[];
     notice("繼續航行！前方海面暫時平靜。");
@@ -926,17 +968,18 @@
       }
       node.hidden=false;
     }
-    if(command?.startsWith("ans-"))answerBattle(Number(command.slice(4)));
-    if(command==="battle-next"&&sailRun?.battle)nextQuestion();
+    if(command?.startsWith("ans-"))answerFight(Number(command.slice(4)));
+    if(command==="battle-next"&&fight)nextQuestion();
     if(command==="battle-end")endBattle();
-    if(command==="battle-retreat"){leaveSea();ferryScreen("dock","你被海盜打倒了，回到碼頭整備。生命值已恢復，可以再次登船。");}
+    if(command==="battle-retreat"){fight=null;leaveSea();ferryScreen("dock","你被海盜打倒了，回到碼頭整備。生命值已恢復，可以再次登船。");}
+    if(command==="boss")startBoss();
+    if(command==="boss-back"){fight=null;showFinish(true);}
     if(command==="battle-star"){
-      const b=sailRun?.battle;
-      if(b&&!b.answered){
-        const wrong=b.q.options.map((_,i)=>i).filter(i=>i!==b.q.answer&&!b.eliminated.has(i));
+      if(fight&&!fight.answered){
+        const wrong=fight.q.options.map((_,i)=>i).filter(i=>i!==fight.q.answer&&!fight.eliminated.has(i));
         if(starLeft<=0)notice("星象之力已經用完了。");
         else if(wrong.length<=1)notice("沒有可以再排除的選項了。");
-        else{b.eliminated.add(wrong[Math.floor(Math.random()*wrong.length)]);starLeft--;fx("skill");renderBattle();}
+        else{fight.eliminated.add(wrong[Math.floor(Math.random()*wrong.length)]);starLeft--;fx("skill");renderFight();}
       }
     }
     if(command==="close")close();
@@ -1183,6 +1226,8 @@
   }
   const dailyReward=Fleet.daily();
   if(dailyReward)setTimeout(()=>{fx("coin");notice("📅 每日登入第 "+dailyReward.streak+" 天 · 🪙 +"+dailyReward.coins);},900);
+  const dueMistakes=Fleet.mistakes().length;
+  if(dueMistakes)setTimeout(()=>notice("📕 錯題本有 "+dueMistakes+" 題等你複習！"),dailyReward?4200:1200);
   refreshSkill();
   const requested=new URLSearchParams(location.search).get("unit");
   if(requested==="sample"||units.some(unit=>unit.id===requested))lessonEntry(requested);

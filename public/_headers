@@ -6,3 +6,11 @@
   Cache-Control: public, max-age=604800
 /favicon.svg
   Cache-Control: public, max-age=604800
+/
+  Cache-Control: no-cache
+/index.html
+  Cache-Control: no-cache
+/*.js
+  Cache-Control: no-cache
+/*.css
+  Cache-Control: no-cache

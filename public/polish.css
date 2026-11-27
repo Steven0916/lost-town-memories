@@ -247,3 +247,25 @@ dialog:not([open]){animation:none}
 .gear-card p{margin:0;font-size:.75rem;color:#46594f}
 .gear-card button{margin-top:auto;width:100%;font-size:.8rem;padding:.35rem .3rem}
 @media(max-width:600px){.gear-grid{grid-template-columns:1fr 1fr}.bar-row{grid-template-columns:4.6em 1fr 4.8em}}
+
+/* ---- 錯題本、Boss、強化 ---- */
+#review{width:min(640px,calc(100% - 24px))}
+#review-body{padding:clamp(16px,4vw,30px)}
+.badge:not(:empty){margin-left:4px;padding:1px 7px;border-radius:10px;background:#ff7a5c;color:#fff;font-size:12px;font-weight:900}
+#book-btn.has-items{border-color:#ffb08a}
+.mb-list{list-style:none;margin:10px 0 0;padding:0;display:grid;gap:6px;max-height:48dvh;overflow:auto}
+.mb-list li{display:grid;grid-template-columns:1fr auto;gap:2px 10px;padding:9px 12px;border-radius:10px;background:#fffdf5;border:1px solid #e2d4b3;margin:0}
+.mb-unit{grid-column:1/-1;font-size:12px;font-weight:800;color:#8a4b1c}
+.mb-q{line-height:1.45}
+.mb-n{font-size:12px;color:#8a3519;align-self:end;white-space:nowrap}
+.boss-art{display:block;width:min(240px,70%);height:auto;margin:0 auto;border-radius:14px;background:radial-gradient(ellipse at 50% 80%,#ff9c5a55,#17353d 70%);animation:boss-breathe 2.6s ease-in-out infinite}
+@keyframes boss-breathe{50%{transform:scale(1.03)}}
+.boss-name{text-align:center;font:900 18px "Noto Serif TC",serif;margin:6px 0 10px;color:#7a2e1a}
+.gear-card .mini{width:100%;font-size:.74rem;padding:.3rem .2rem;border-radius:.5rem;border:1px solid #c9b98f;background:#f3ead0;color:#46594f;font-weight:700}
+.gear-card .mini.primary{background:linear-gradient(180deg,#ffe7ac,#f6b94f);color:#4a3615;border-color:#e7a847}
+.gear-card .mini.quiet-light{background:#e5efe1;color:#214e43;border-color:#a9bfac}
+.gear-card .mini.ghost{background:transparent;border-style:dashed;color:#8a5a3c}
+.gear-card .mini:disabled{opacity:.55;cursor:default}
+.gear-note{font-size:.7rem!important;color:#8a5a3c!important}
+
+#review-title:focus{outline:none}
