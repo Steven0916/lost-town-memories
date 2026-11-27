@@ -57,7 +57,7 @@ const MAX_LEVEL = 5, MAX_MISTAKES = 60, REVIEW_DAILY = 10;
     coins: 0, owned: ["sail"], selected: "sail", earned: {},
     costumes: { owned: ["base"], equipped: "base" }, daily: { last: "", streak: 0 },
     gear: { owned: [], equipped: { weapon: "", armor: "", boots: "" }, levels: {} }, wins: 0,
-    shards: 0, mistakes: [], bosses: {}, review: { day: "", n: 0 },
+    shards: 0, mistakes: [], bosses: {}, review: { day: "", n: 0 }, closet: [],
   });
   const flags = (arr, n) => Array.from({ length: n }, (_, i) => arr?.[i] === true);
   function sanitize(raw) {
@@ -97,6 +97,7 @@ const MAX_LEVEL = 5, MAX_MISTAKES = 60, REVIEW_DAILY = 10;
     if (raw.bosses && typeof raw.bosses === "object") {
       for (const id of Object.keys(raw.bosses).slice(0, 30)) if (/^[a-z]{3,12}$/.test(id) && raw.bosses[id] === true) w.bosses[id] = true;
     }
+    if (Array.isArray(raw.closet)) w.closet = [...new Set(raw.closet)].filter((k) => typeof k === "string" && itemInfo(k)).slice(0, 120);
     if (/^\d{4}-\d{2}-\d{2}$/.test(raw.review?.day ?? "")) w.review = { day: raw.review.day, n: Math.max(0, Math.min(99, Number(raw.review.n) | 0)) };
     return w;
   }
@@ -108,6 +109,16 @@ const MAX_LEVEL = 5, MAX_MISTAKES = 60, REVIEW_DAILY = 10;
   const findG = (id) => GEAR.find((g) => g.id === id);
   const skillId = () => findC(wallet.costumes.equipped)?.skill.id ?? "curious";
 
+  // ---- 服飾商店（目錄在 catalog.js）----
+  function itemInfo(key) {
+    const [slot, id] = String(key).split(":");
+    const item = window.CATALOG?.[slot]?.items.find((i) => i.id === id);
+    return item ? { slot, id, item } : null;
+  }
+  const ownsItem = (slot, id) => {
+    const item = window.CATALOG?.[slot]?.items.find((i) => i.id === id);
+    return Boolean(item) && (item.price === 0 || wallet.closet.includes(slot + ":" + id));
+  };
   const levelOf = (id) => wallet.gear.levels[id] || 0;
   const gearValue = (g) => Math.round(g.value * (1 + .2 * levelOf(g.id)));
   function stats() {
@@ -218,6 +229,14 @@ const MAX_LEVEL = 5, MAX_MISTAKES = 60, REVIEW_DAILY = 10;
       if (!g || !wallet.gear.owned.includes(id)) return false;
       wallet.gear.equipped[g.slot] = id; commit(); return true;
     },
+    // ---- 服飾商店 ----
+    ownsItem,
+    buyItem(slot, id) {
+      const item = window.CATALOG?.[slot]?.items.find((i) => i.id === id);
+      if (!item || ownsItem(slot, id) || wallet.coins < item.price) return false;
+      wallet.coins -= item.price; wallet.closet.push(slot + ":" + id); commit(); return true;
+    },
+    applyOutfit,
     // ---- 裝備強化、合成、分解 ----
     maxLevel: MAX_LEVEL,
     levelOf, gearValue,

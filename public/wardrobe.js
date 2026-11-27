@@ -1,30 +1,47 @@
+// 衣櫃：依 catalog.js 建立各類選單，只列出「已擁有」的款式；新款式到下方「服飾商店」購買。
 (() => {
-  const slots = [
-    ["hat","帽子",[["brim","巡旅帽"],["hood","星術尖帽"],["bare","不戴帽子"]]],
-    ["coat","上衣",[["556ea2","靛藍旅行衫"],["367b67","森林金領外套"],["a74f55","莓紅長袍"]]],
-    ["pants","褲子",[["45494f","炭灰長褲"],["836746","卡其長褲"],["374e79","深藍長褲"]]],
-    ["shoes","鞋子",[["5f4738","棕色皮鞋"],["e4dbc4","米白步鞋"],["903f44","磚紅便鞋"]]],
-    ["hair","髮色",[["503b35","栗棕"],["25201e","墨黑"],["d9a94e","金黃"],["a8472f","赭紅"],["cfd3d8","銀白"],["3f6fb0","海藍"]]],
-    ["skin","膚色",[["f4cfa7","淺膚"],["efbf92","自然"],["d9a074","小麥"],["a8714a","深膚"]]],
-    ["gear","裝備",[["pack","探險背包"],["lamp","手提燈"],["none","卸下裝備"]]]
-  ];
-  const wardrobe=document.querySelector("#wardrobe"), canvas=document.querySelector("#model");
-  let angle=.4, saved={};
-  try{saved=JSON.parse(localStorage.getItem("town-travel-outfit")) || {};}catch{}
-  const outfit=window.travelOutfit={};
-  for(const [key,title,items] of slots){
-    const label=document.createElement("label"), select=document.createElement("select");
-    label.textContent=title;
-    for(const [value,name] of items)select.add(new Option(name,value));
-    if(items.some(([value])=>value===saved[key]))select.value=saved[key];
-    outfit[key]=select.value;
-    select.onchange=()=>{
-      outfit[key]=select.value;
-      try{localStorage.setItem("town-travel-outfit",JSON.stringify(outfit));}catch{}
-      World.preview(canvas,angle);
-    };
-    label.append(select);document.querySelector("#clothes").append(label);
+  const CATALOG = window.CATALOG;
+  const order = ["hat", "coat", "pants", "shoes", "hair", "skin", "face", "neck", "back", "gear", "pet"];
+  const wardrobe = document.querySelector("#wardrobe"), canvas = document.querySelector("#model");
+  const KEY = "town-travel-outfit";
+  let angle = .4, saved = {}, tryOn = null;
+  try { saved = JSON.parse(localStorage.getItem(KEY)) || {}; } catch {}
+  const outfit = window.travelOutfit = {};
+  const selects = {};
+  const owns = (slot, id) => (window.Fleet ? Fleet.ownsItem(slot, id) : CATALOG[slot].items.find((i) => i.id === id)?.price === 0);
+  const save = () => { try { localStorage.setItem(KEY, JSON.stringify(outfit)); } catch {} };
+  const redraw = () => World.preview(canvas, angle, undefined, tryOn);
+
+  function fill(slot) {
+    const select = selects[slot], current = outfit[slot] ?? saved[slot];
+    select.replaceChildren();
+    for (const item of CATALOG[slot].items) if (owns(slot, item.id)) select.add(new Option(item.name, item.id));
+    const has = [...select.options].some((o) => o.value === current);
+    select.value = has ? current : select.options[0].value;
+    outfit[slot] = select.value;
   }
-  document.querySelector("#dress").onclick=()=>{wardrobe.showModal();World.preview(canvas,angle);};
-  document.querySelector("#rotate").onclick=()=>{angle+=Math.PI/2;World.preview(canvas,angle);};
+
+  for (const slot of order) {
+    const label = document.createElement("label"), select = document.createElement("select");
+    label.textContent = CATALOG[slot].name;
+    selects[slot] = select;
+    fill(slot);
+    select.onchange = () => { outfit[slot] = select.value; tryOn = null; save(); redraw(); };
+    label.append(select);
+    document.querySelector("#clothes").append(label);
+  }
+  window.Fleet?.applyOutfit?.();
+
+  window.Wardrobe = {
+    outfit,
+    // 穿上某件（購買後自動呼叫）
+    setOutfit(slot, id) { fill(slot); outfit[slot] = id; fill(slot); tryOn = null; save(); redraw(); },
+    // 只預覽、不保留
+    tryOn(slot, id) { tryOn = { [slot]: id }; redraw(); },
+    refresh() { for (const slot of order) fill(slot); save(); },
+  };
+
+  window.addEventListener("ltm:wallet", () => { for (const slot of order) fill(slot); });
+  document.querySelector("#dress").onclick = () => { tryOn = null; wardrobe.showModal(); redraw(); };
+  document.querySelector("#rotate").onclick = () => { angle += Math.PI / 2; redraw(); };
 })();

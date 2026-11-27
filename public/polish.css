@@ -269,3 +269,25 @@ dialog:not([open]){animation:none}
 .gear-note{font-size:.7rem!important;color:#8a5a3c!important}
 
 #review-title:focus{outline:none}
+
+/* ---- 服飾商店 ---- */
+#shop{margin:1rem 0;padding-top:.9rem;border-top:1px dashed #cdb98a}
+#shop h3{font-size:1.05rem;margin-bottom:.3rem}
+.chips{display:flex;flex-wrap:wrap;gap:.35rem;margin:.5rem 0}
+.chip{padding:.3rem .65rem;border-radius:999px;border:1px solid #c9b98f;background:#f6efd8;color:#46594f;font-weight:700;font-size:.82rem;transition:background .15s,transform .15s var(--ease)}
+.chip small{opacity:.65;font-weight:600}
+.chip:hover{transform:translateY(-1px)}
+.chip.on{background:#22574f;color:#fff5de;border-color:#22574f}
+.shop-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(7.4rem,1fr));gap:.5rem}
+.shop-card{display:flex;flex-direction:column;align-items:center;gap:.25rem;padding:.55rem .4rem;border:2px solid #e0d1a6;border-radius:.7rem;background:linear-gradient(180deg,#fffdf5,#f6efd8);text-align:center}
+.shop-card.on{border-color:#4b8575;box-shadow:0 0 0 3px #4b857533}
+.shop-card.locked .swatch{filter:saturate(.75)}
+.shop-card h5{margin:0;font-size:.85rem;line-height:1.3}
+.shop-card .mini{width:100%;font-size:.76rem;padding:.3rem .2rem;border-radius:.5rem;border:1px solid #c9b98f;background:#f3ead0;color:#46594f;font-weight:700}
+.shop-card .mini.primary{background:linear-gradient(180deg,#ffe7ac,#f6b94f);color:#4a3615;border-color:#e7a847}
+.shop-card .mini.quiet-light{background:#e5efe1;color:#214e43;border-color:#a9bfac}
+.shop-card .mini.ghost{background:transparent;border-style:dashed;color:#8a5a3c}
+.shop-card .mini:disabled{opacity:.6;cursor:default}
+.swatch{display:grid;place-items:center;width:2.6rem;height:2.6rem;border-radius:50%;border:2px solid #ffffffaa;box-shadow:0 2px 6px #4b3a1b33,inset 0 -3px 6px #0000001f;font-size:1.5rem}
+.swatch.icon{background:#fff8e4}
+#clothes{max-height:21rem;overflow:auto;padding-right:.2rem}

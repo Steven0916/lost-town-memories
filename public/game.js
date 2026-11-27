@@ -1203,6 +1203,14 @@
       const label=time<dashUntil?"🌪️ 衝刺中！":wait>0?"疾風步 "+wait+" 秒":"🌪️ 疾風步 · Q";
       if(skillButton.textContent!==label){skillButton.textContent=label;skillButton.disabled=wait>0&&time>=dashUntil;}
     }
+    const petId=window.travelOutfit?.pet;
+    if(petId&&petId!=="none"&&state.mode==="play"){
+      const tx=state.x-Math.sin(state.dir)*1.3-Math.cos(state.dir)*.8,tz=state.z-Math.cos(state.dir)*1.3+Math.sin(state.dir)*.8;
+      if(!state.pet||Math.hypot(tx-state.pet.x,tz-state.pet.z)>9)state.pet={x:tx,z:tz,dir:state.dir};
+      const follow=1-Math.exp(-3.5*dt),dx=tx-state.pet.x,dz=tz-state.pet.z;
+      state.pet.x+=dx*follow;state.pet.z+=dz*follow;
+      state.pet.dir=Math.hypot(dx,dz)>.15?Math.atan2(dx,dz):state.dir;
+    }else state.pet=null;
     paintBars();
     world.render(state,time/1000,dt);
     if(guideTarget&&Math.hypot(guideTarget.x-state.x,guideTarget.z-state.z)<2.15)clearGuide();

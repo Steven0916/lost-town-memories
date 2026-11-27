@@ -82,6 +82,7 @@ function sanitizeWallet(w) {
   if (w.bosses && typeof w.bosses === "object") for (const id of Object.keys(w.bosses).slice(0, 30)) if (UNIT_RE.test(id) && w.bosses[id] === true) bosses[id] = true;
   const rday = /^\d{4}-\d{2}-\d{2}$/.test(w.review?.day ?? "") ? w.review.day : "";
   return {
+    closet: [...new Set(Array.isArray(w.closet) ? w.closet : [])].filter((k) => typeof k === "string" && /^[a-z]+:[a-z0-9]{2,12}$/.test(k)).slice(0, 120),
     shards: Math.max(0, Math.min(9999, Number(w.shards) | 0)), mistakes, bosses, review: { day: rday, n: rday ? Math.max(0, Math.min(99, Number(w.review.n) | 0)) : 0 },
     gear: { owned: gOwned, equipped, levels }, wins: Math.max(0, Math.min(99999, Number(w.wins) | 0)),
     coins: Math.max(0, Math.min(99999, Number(w.coins) | 0)), owned, selected: owned.includes(w.selected) ? w.selected : "sail", earned,
@@ -105,7 +106,7 @@ async function handleApi(request, env, url) {
       name: clean(body.name),
       progress: sanitizeProgress(body.progress),
       outfit: typeof body.outfit === "object" && body.outfit ? Object.fromEntries(
-        Object.entries(body.outfit).slice(0, 8).map(([k, v]) => [clean(k, 10), clean(v, 12)])) : {},
+        Object.entries(body.outfit).slice(0, 24).map(([k, v]) => [clean(k, 10), clean(v, 12)])) : {},
       wallet: sanitizeWallet(body.wallet),
       updated: Date.now(),
     };

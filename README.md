@@ -16,6 +16,8 @@
 | `public/costumes.js` | 衣櫃裡的專屬服裝商店 |
 | `public/quiz.js` | 海盜問答：把單元任務自動改編成選擇題 |
 | `public/review.js` | 錯題本與複習模式 |
+| `public/catalog.js` | 服飾商店目錄（款式、價格）— 新增服飾先改這裡 |
+| `public/shop.js` | 衣櫃裡的服飾商店介面（含試穿） |
 | `public/gear.js` | 衣櫃裡的裝備與能力值介面 |
 | `public/fx.js` | 音效與通關彩帶 |
 | `src/worker.js` | Cloudflare Worker：`/api/*`，資料存在 KV |
@@ -36,6 +38,7 @@
 - 錯題本：海盜／Boss 戰答錯的題目自動收進，右上「📕 錯題本」可複習；答對移出並得 🪙1（每天上限 10）。
 - 單元 Boss：通關畫面的「⚔️ 挑戰單元 Boss」，答對造成「攻擊力×2」傷害（Boss 100 血），答錯被反擊 35 血。首次擊敗得 🪙40 並必掉一件傳說裝備。
 - 裝備強化（最高 Lv5，每級 +20%，花金幣＋碎片）、合成（消耗低一階同部位裝備＋碎片＋金幣，打造高一階裝備）、分解（換碎片）。碎片來自重複掉落和分解。
+- 服飾商店（`catalog.js`）：帽子 13、上衣 11、褲子 9、鞋子 9、臉部 5、頸部 5、背飾 5、手持道具 8、寵物 5（含原本免費款）。買前可「試穿」；購買後自動穿上，並隨同步碼備份。寵物會在遊戲中跟著角色走。外觀在 `world.js` 的 `hatModel / coatDetail / faceModel / neckModel / backModel / handModel / petModel`。
 - 開船在 `game.js` 的 `sail()`，海域與載具 3D 模型在 `world.js` 的 `seaTerrain()` / `vehicle()`。
 
 ## 本機開發與部署
