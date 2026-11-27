@@ -142,20 +142,20 @@
   function costumeHead(cs){
     switch(cs){
       case "star":
-        prism(0,1.2,0,.4,.08,"3b3f8f",8);prism(0,1.27,0,.3,.78,"3b3f8f",8,.03);
-        prism(0,1.3,0,.31,.08,"ffd981",8);crystal(0,2.15,0,.1,"ffe08a");break;
+        prism(0,1.4,0,.4,.08,"3b3f8f",8);prism(0,1.47,0,.3,.78,"3b3f8f",8,.03);
+        prism(0,1.5,0,.31,.08,"ffd981",8);crystal(0,2.32,0,.1,"ffe08a");break;
       case "wind":
-        box(0,1.34,-.02,.45,.12,.43,"2b6f6a");box(0,1.17,0,.45,.07,.43,"fff2c4");box(.26,1.3,-.12,.05,.3,.05,"f5f0e0");break;
+        box(0,1.42,-.02,.48,.1,.46,"2b6f6a");box(0,1.31,0,.48,.07,.46,"fff2c4");box(.27,1.38,-.12,.05,.3,.05,"f5f0e0");break;
       case "gold":
-        prism(0,1.2,0,.3,.07,"2a2326",8);prism(0,1.27,0,.22,.55,"2a2326",8,.2);prism(0,1.3,0,.225,.1,"f0cd74",8);break;
+        prism(0,1.4,0,.3,.07,"2a2326",8);prism(0,1.47,0,.22,.55,"2a2326",8,.2);prism(0,1.5,0,.225,.1,"f0cd74",8);break;
       case "pirate":
-        prism(0,1.22,0,.52,.09,"26262e",6,.46);prism(0,1.3,0,.3,.22,"26262e",6,.25);prism(0,1.215,0,.525,.03,"e0b84a",6);
-        box(0,1.36,.27,.1,.1,.03,"f5f2e6");box(.11,1.19,.215,.11,.1,.02,"111111");box(0,1.2,.212,.44,.02,.02,"111111");break;
+        prism(0,1.42,0,.52,.09,"26262e",6,.46);prism(0,1.5,0,.3,.22,"26262e",6,.25);prism(0,1.415,0,.525,.03,"e0b84a",6);
+        box(0,1.5,.27,.1,.1,.03,"f5f2e6");box(.11,1.13,.235,.13,.13,.02,"111111");box(0,1.27,.226,.47,.025,.02,"111111");break;
       case "scholar":
-        box(0,1.25,0,.38,.1,.38,"232f55");box(0,1.31,0,.64,.05,.64,"232f55");box(.33,1.12,0,.04,.2,.04,"ffd981");break;
+        box(0,1.42,0,.4,.09,.4,"232f55");box(0,1.5,0,.64,.05,.64,"232f55");box(.33,1.32,0,.04,.2,.04,"ffd981");break;
       case "knight":
-        box(0,1.01,0,.5,.5,.48,"aab4be");box(0,1.04,.245,.38,.08,.02,"20262b");
-        prism(0,1.25,0,.34,.14,"aab4be",8,.2);box(0,1.5,-.05,.08,.3,.32,"d9534f");break;
+        box(0,1.0,0,.52,.52,.5,"aab4be");box(0,1.14,.255,.4,.1,.02,"20262b");
+        prism(0,1.5,0,.35,.14,"aab4be",8,.2);box(0,1.62,-.05,.08,.3,.32,"d9534f");break;
     }
   }
   function costumeBody(cs,sway){
@@ -185,34 +185,72 @@
         box(-.52,.5,.22,.08,.5,.4,"4a6fa5");box(-.57,.5,.22,.02,.2,.12,"ffd981");break;
     }
   }
+  const shadeHex=(hex,k)=>String(hex).match(/../g).map(v=>Math.min(255,Math.round(parseInt(v,16)*k)).toString(16).padStart(2,"0")).join("");
+  const npcSkins=["efbf92","e3a97c","f4cfa7","c98d62"], npcHair=["503b35","2b2420","7a4b2a","b27a43","3a2f45"];
   function person(x,z,dir,coat,hat,phase=0,player=false,elevation=0){
     const look=player ? (window.travelOutfit||{}) : {};
+    const seed=parseInt(String(coat).slice(0,4),16)||0;
+    const skin=player?(look.skin||"efbf92"):npcSkins[seed%4], hair=player?(look.hair||"503b35"):npcHair[(seed>>2)%5];
     const cs=player&&costumePalette[look.costume]?look.costume:null, pal=cs?costumePalette[cs]:null;
     coat=pal?pal.coat:(look.coat || coat);
     const pants=pal?pal.pants:(look.pants || "45494f"), shoes=pal?pal.shoes:(look.shoes || "5f4738");
-    at(x,elevation,z,dir,()=>{
+    const skinDark=shadeHex(skin,.9), hasHat=cs?true:(!player||look.hat!=="bare");
+    at(x,elevation+(phase?Math.abs(Math.sin(phase))*.05:0),z,dir,()=>{
       if(!elevation)prism(0,.035,0,.43,.012,"5c8267",12);
       const sway=Math.sin(phase)*.18;
-      box(-.15,.04,sway,.20,.43,.23,pants);
-      box(.15,.04,-sway,.20,.43,.23,pants);
-      box(-.15,.02,.043+sway,.22,.12,.31,shoes);
-      box(.15,.02,.043-sway,.22,.12,.31,shoes);
-      box(0,.43,0,.59,.60,.43,coat);
-      box(-.36,.52,-sway*.6,.16,.48,.17,coat);
-      box(.36,.52,sway*.6,.16,.48,.17,coat);
+      // 腿、褲口、鞋
+      for(const s of [-1,1]){
+        const off=-s*sway;
+        box(s*.15,.04,off,.2,.43,.23,pants);
+        box(s*.15,.04,off,.215,.08,.245,shadeHex(pants,.78));
+        box(s*.15,.02,.043+off,.22,.12,.31,shoes);
+        box(s*.15,.02,.17+off,.2,.07,.07,shadeHex(shoes,1.25));
+        box(s*.15,0,.043+off,.23,.03,.32,"2a2220");
+      }
+      // 軀幹：下擺、主體、腰帶、領口、鈕扣
+      box(0,.4,0,.63,.1,.47,shadeHex(coat,.82));
+      box(0,.43,0,.59,.6,.43,coat);
       box(0,.52,0,.60,.08,.44,"775b45");
       box(0,.53,.228,.10,.055,.025,"c9a563");
-      for(const side of [-1,1])box(side*.36,.46,side*sway*.6,.14,.13,.15,"dfae83");
-      box(0,1.01,0,.43,.41,.41,"efbf92");
-      box(-.11,1.19,.209,.053,.058,.022,"292d30");box(.11,1.19,.209,.053,.058,.022,"292d30");
+      box(0,.98,.08,.36,.06,.3,"f4ecd2");
+      for(const y of [.64,.76,.88])box(0,y,.222,.045,.045,.015,"e9d9a8");
+      // 手臂、袖口、手
+      for(const s of [-1,1]){
+        const z0=s*sway*.6;
+        box(s*.36,.52,z0,.16,.48,.17,coat);
+        box(s*.36,.5,z0,.185,.07,.195,"efe3c4");
+        box(s*.36,.44,z0,.14,.13,.15,shadeHex(skin,.95));
+      }
+      // 脖子、頭、耳朵
+      box(0,.93,0,.2,.1,.2,skinDark);
+      box(0,1.0,0,.46,.44,.44,skin);
+      for(const s of [-1,1])box(s*.245,1.1,0,.05,.12,.1,skinDark);
+      // 髮型：後髮、鬢角、瀏海（頭盔以外都會露出）
+      if(cs!=="knight"){
+        box(0,1.0,-.2,.48,.47,.08,hair);
+        for(const s of [-1,1]){box(s*.235,1.18,-.02,.04,.26,.4,hair);box(s*.17,1.31,.215,.1,.12,.03,hair);}
+        box(-.04,1.34,.215,.2,.1,.03,hair);
+        if(!hasHat)box(0,1.42,-.02,.48,.08,.46,hair);
+      }
+      // 臉：眼白、瞳孔、高光、眉、鼻、嘴、腮紅
+      for(const s of [-1,1]){
+        box(s*.11,1.15,.222,.1,.11,.02,"ffffff");
+        box(s*.11,1.15,.232,.055,.085,.02,"2b2f33");
+        box(s*.098,1.21,.245,.022,.022,.01,"ffffff");
+        box(s*.11,1.28,.226,.11,.025,.015,hair);
+        box(s*.16,1.07,.226,.08,.045,.01,"f2a58f");
+      }
+      box(0,1.08,.228,.05,.06,.04,shadeHex(skin,.93));
+      box(0,1.03,.226,.09,.022,.015,"a5524a");
+      // 頭飾
       if(cs)costumeHead(cs);
       else if(look.hat==="hood"){
-        prism(0,1.37,0,.34,.52,"695387",6,.035);
+        prism(0,1.39,0,.34,.52,"695387",6,.035);
       }else if(look.hat==="bare"){
-        box(0,1.34,-.02,.45,.12,.43,"503b35");
+        // 不戴帽子：露出髮型
       }else{
-      prism(0,1.35,0,.36,.065,hat,8);
-      prism(0,1.40,0,.26,.19,hat,8,.18);
+        prism(0,1.37,0,.36,.065,hat,8);
+        prism(0,1.42,0,.26,.19,hat,8,.18);
       }
       if(!cs&&look.coat==="367b67")box(0,.83,0,.62,.15,.46,"f0cd74");
       if(!cs&&look.coat==="a74f55")prism(0,.35,0,.44,.47,coat,8,.31);
@@ -775,7 +813,7 @@
     if(costume!==undefined)window.travelOutfit={...previous,costume};
     vertices=[];
     try{person(0,0,dir,"556ea2","333f65",0,true);}finally{window.travelOutfit=previous;}
-    paintModel(canvas,saved,120*k,210*k,98*k);
+    paintModel(canvas,saved,120*k,222*k,80*k);
   }
   function ferry(canvas,progress,aboard,tint,kind="sail"){
     const saved=vertices;

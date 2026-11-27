@@ -279,6 +279,20 @@
     if(lastFocus&&!lastFocus.hidden&&lastFocus.getClientRects().length)lastFocus.focus({preventScroll:true});
   }
   dialog.addEventListener("cancel",event=>{event.preventDefault();if(body.dataset.locked!=="true")close();});
+  // 點視窗外的空白處關閉（需按下與放開都在視窗外；進行中的關卡序幕、通關畫面等鎖定視窗會輕輕晃動提示）
+  const outside=(box,event)=>{const r=box.getBoundingClientRect();return event.clientX<r.left||event.clientX>r.right||event.clientY<r.top||event.clientY>r.bottom;};
+  for(const box of [dialog,$("#cloud"),$("#wardrobe")]){
+    let pressedOutside=false;
+    box.addEventListener("pointerdown",event=>{pressedOutside=event.target===box&&outside(box,event);});
+    box.addEventListener("click",event=>{
+      if(event.target!==box||!pressedOutside||!outside(box,event))return;
+      pressedOutside=false;
+      if(box===dialog&&body.dataset.locked==="true"){
+        box.classList.remove("nudge");void box.offsetWidth;box.classList.add("nudge");return;
+      }
+      if(box===dialog)close();else box.close();
+    });
+  }
   const action=(label,id,style="primary")=>'<button type="button" class="'+style+'" data-action="'+id+'">'+esc(label)+'</button>';
   const actions=(...buttons)=>'<div class="dialog-actions">'+buttons.join("")+'</div>';
   const para=text=>'<p class="dialog-text">'+esc(text)+'</p>';

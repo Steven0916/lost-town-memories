@@ -196,3 +196,7 @@ dialog::backdrop{background:radial-gradient(ellipse at 50% 40%,#17434f99,#07161c
 .skill:disabled{opacity:.65;cursor:default}
 .star-row{margin:6px 0 0}
 @media(max-width:600px){.costume-grid{grid-template-columns:1fr 1fr}}
+
+dialog.nudge{animation:nudge .35s}
+@keyframes nudge{20%{transform:translateX(-7px)}45%{transform:translateX(6px)}70%{transform:translateX(-3px)}}
+dialog:not([open]){animation:none}
