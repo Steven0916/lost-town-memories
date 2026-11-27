@@ -61,7 +61,9 @@
       const [x,z]=points[i-1], [a,b]=points[i], dx=a-x,dz=b-z,d=Math.hypot(dx,dz);
       const nx=dz*width/2/d,nz=-dx*width/2/d;
       face([[x+nx,height,z+nz],[a+nx,height,b+nz],[a-nx,height,b-nz],[x-nx,height,z-nz]],tint);
-      prism(a,height-.002,b,width/2,.001,tint,10);
+      const disc=[];
+      for(let k=0;k<12;k++){const t=k*Math.PI*2/12;disc.push([a+Math.cos(t)*width/2,height,b+Math.sin(t)*width/2]);}
+      face(disc,tint,1);
     }
   }
   function house(x,z,rotation,w,d,tone,roof,h=2.15) {
@@ -227,7 +229,7 @@
       for(const s of [-1,1]){
         const z0=s*sway*.6;
         box(s*.36,.54,z0,.16,.46,.17,coat);
-        box(s*.36,.5,z0,.19,.07,.2,"efe3c4");
+        box(s*.36,.5,z0,.16,.04,.17,"efe3c4");
         box(s*.36,.4,z0,.15,.13,.16,shadeHex(skin,.97));
         box(s*.36,.37,z0+.005,.12,.05,.13,skinDark);
       }
