@@ -1,0 +1,12 @@
+{
+  "name": "異界巡旅：消失的城鎮記憶",
+  "short_name": "異界巡旅",
+  "description": "翰林版六年級社會課前 3D 冒險",
+  "lang": "zh-Hant-TW",
+  "start_url": "/",
+  "display": "fullscreen",
+  "orientation": "landscape",
+  "background_color": "#102a34",
+  "theme_color": "#102a34",
+  "icons": [{ "src": "/favicon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any maskable" }]
+}

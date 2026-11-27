@@ -1,0 +1,15 @@
+{
+  "name": "lost-town-memories",
+  "version": "2.0.0",
+  "private": true,
+  "description": "異界巡旅：消失的城鎮記憶 — 翰林版六年級社會課前 3D 冒險",
+  "scripts": {
+    "dev": "wrangler dev",
+    "deploy": "wrangler deploy",
+    "qr": "node scripts/make-qr.mjs"
+  },
+  "devDependencies": {
+    "qrcode": "^1.5.4",
+    "wrangler": "^4.168.0"
+  }
+}

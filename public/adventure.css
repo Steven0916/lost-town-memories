@@ -1,0 +1,168 @@
+.unit-tile {
+  display: flex;
+  flex-direction: column;
+  background: #fffdf5;
+  border: 1px solid #e2d4b3;
+  border-left: 5px solid var(--unit-color);
+  border-radius: 9px;
+  overflow: hidden;
+}
+.unit-tile .unit-card {
+  flex: 1;
+  border: 0;
+  border-radius: 0;
+  min-height: 0;
+}
+.unit-tile-footer {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 4px 8px;
+  padding: 5px 11px 8px;
+  font-size: .875rem;
+  color: #315748;
+}
+.unit-share {
+  background: #e5efe1;
+  color: #214e43;
+  border: 1px solid #a9bfac;
+  border-radius: 7px;
+  padding: 6px 8px;
+}
+.entry-progress { color: #315748; font-weight: 750; }
+.share-qr {
+  display: block;
+  width: min(216px, 100%);
+  height: auto;
+  margin: 0 auto 16px;
+  border: 1px solid #d2ceb9;
+  image-rendering: pixelated;
+}
+.share-label { display: grid; gap: 6px; font-weight: 750; }
+.share-label input {
+  width: 100%;
+  color: #174b43;
+  background: #fffdf6;
+  border: 1px solid #a6b3a1;
+  border-radius: 7px;
+  padding: 8px;
+  font: inherit;
+}
+#share-status:not(:empty) { margin-top: 8px; }
+#route-help { margin-top: 8px; font-size: .875rem; }
+#route-help:disabled { display: none; }
+#guide-trail {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  overflow: hidden;
+}
+#guide-trail span {
+  position: absolute;
+  width: 12px;
+  height: 12px;
+  border: 2px solid #fff8cc;
+  border-radius: 50%;
+  background: #ffcc54;
+  box-shadow: 0 0 12px #ffe791;
+  transform: translate(-50%, -50%);
+}
+.projection { width: min(1100px, calc(100% - 24px)); }
+.projection #dialog-body { padding: clamp(20px, 5vw, 64px); }
+.projection .dialog-head h2 { font-size: clamp(28px, 5vw, 56px); }
+.projection-question {
+  margin: .5em 0;
+  font-size: clamp(25px, 4.5vw, 52px);
+  font-weight: 850;
+  line-height: 1.35;
+  color: #184a41;
+}
+.projection-sentence {
+  margin-bottom: 18px;
+  padding: .6em .75em;
+  border-radius: 10px;
+  background: #e1edda;
+  font-size: clamp(18px, 3vw, 34px);
+  font-weight: 750;
+}
+.projection .map-frame { max-width: 620px; margin-inline: auto; }
+.projection details { font-size: clamp(16px, 2.2vw, 24px); }
+.shop { margin: 12px 0; padding: 0; border: 0; }
+.shop legend { font-weight: 800; margin-bottom: 7px; }
+.product-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+.product {
+  position: relative;
+  display: grid;
+  justify-items: center;
+  gap: 3px;
+  padding: 8px 6px;
+  border: 2px solid #dccb9e;
+  border-radius: 10px;
+  background: #fff9e7;
+  cursor: pointer;
+}
+.product input { position: absolute; top: 8px; left: 8px; accent-color: #23604e; }
+.product:has(input:checked) { border-color: #397b60; background: #e4f1dc; }
+.product:has(input:focus-visible) { outline: 3px solid #31677a; outline-offset: 1px; }
+.product-icon { font-size: 1.7rem; }
+.basket { border: 2px dashed #a88955; background: #f6ebcb; border-radius: 12px; padding: 8px 12px; }
+.basket p { margin-top: 4px; }
+.river-map {
+  position: relative;
+  isolation: isolate;
+  height: 230px;
+  overflow: hidden;
+  margin-top: 10px;
+  border: 1px solid #72988a;
+  border-radius: 12px;
+  background: radial-gradient(ellipse at 12% 12%, #abd18e 0 16%, transparent 55%),
+    radial-gradient(ellipse at 100% 85%, #c4e5ce 0 19%, transparent 50%), #e1edc7;
+}
+.river-water, .river-links, .river-links span { position: absolute; inset: 0; pointer-events: none; }
+.river-water {
+  background: #7dc8d1;
+  clip-path: polygon(18% 42%, 28% 39%, 42% 45%, 50% 48%, 64% 52%, 75% 61%, 84% 65%, 100% 57%, 100% 100%, 90% 96%, 82% 82%, 73% 76%, 58% 66%, 46% 59%, 33% 54%, 22% 52%);
+}
+.river-links span { background: #175552; }
+.river-spot {
+  position: absolute;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  min-height: 40px;
+  max-width: 46%;
+  transform: translate(-50%, -50%);
+  padding: 5px 8px;
+  border: 2px solid #568678;
+  border-radius: 9px;
+  background: #f9fff3;
+  color: #183f35;
+  line-height: 1.2;
+  font-weight: 750;
+}
+.river-spot[aria-pressed="true"] { background: #245d50; color: #fffbe7; }
+.river-number:not(:empty) { background: #fff4c3; color: #25493e; border-radius: 50%; padding: 1px 5px; }
+.spot-0 { left: 81%; top: 74%; }
+.spot-1 { left: 17%; top: 29%; }
+.spot-2 { left: 50%; top: 54%; }
+.film {position:relative;overflow:hidden;min-height:215px;padding:24px;text-align:center;border-radius:15px;background:linear-gradient(150deg,#153943,var(--film-color));color:white}
+.film-symbol {font-size:4.3rem;line-height:1.4}
+.film-caption {position:relative;margin:12px auto;font-size:1.2rem;line-height:1.6;font-weight:700}
+.film-time {position:absolute;bottom:0;left:0;height:4px;width:100%;background:#ffdf91;transform-origin:left;animation:film-duration 12s linear both}
+@keyframes film-duration {from{transform:scaleX(0)}to{transform:scaleX(1)}}
+@media(prefers-reduced-motion:reduce){.film-time{animation:none}}
+
+#wardrobe{box-sizing:border-box;width:min(34rem,94vw);max-height:90dvh;overflow:auto;padding:1.4rem;color:#193f42;background:#faf5e6;border:2px solid #ae9568;border-radius:1rem}
+#wardrobe h2{margin:0 0 1rem}
+.dress-layout{display:grid;grid-template-columns:1fr 1fr;gap:1rem;align-items:center;margin-bottom:1rem}
+.dress-preview{display:grid;justify-items:center;background:#e0e8d9;border-radius:45% 45% .7rem .7rem;padding-bottom:.75rem}
+#model{width:100%;height:auto}#clothes label{display:grid;gap:.12rem;font-weight:bold;margin-bottom:.35rem}
+#clothes select{font:inherit;border:1px solid #a89c81;border-radius:.4rem;padding:.35rem;background:#fffdf6;color:#203c3e}
+@media(max-width:600px){.top:has(#dress) .head-meta{display:none}.top #dress,.top #switch,.top #help{padding:.4rem;font-size:.88rem}.dress-layout{gap:.5rem}}
+
+.ferry-scene{display:block;width:100%;height:auto;border-radius:.8rem;background:linear-gradient(#abdce4,#f8e7bd 46%,#85ccc6 46%,#3a9094)}
+.sea-chart{display:block;width:100%;height:auto;border-radius:.8rem;touch-action:none;cursor:crosshair}
+.sea-chart:focus-visible{outline:3px solid #dfab51}
+#port-choice{max-width:100%;padding:.5rem;font:inherit}
+.sea-status{min-height:1.5em}
